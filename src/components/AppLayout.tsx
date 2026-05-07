@@ -24,7 +24,7 @@ export default function AppLayout() {
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-16 flex items-center justify-between border-b border-border px-4 md:px-6 sticky top-0 bg-background/80 backdrop-blur z-30">
+          <header className="h-16 flex items-center justify-between  px-4 md:px-6 sticky top-0 bg-background/80 backdrop-blur z-30">
             <div className="flex items-center gap-3">
               <SidebarTrigger />
               <div className="hidden md:block">
@@ -51,17 +51,18 @@ export default function AppLayout() {
                 {unread > 0 && <span className="absolute top-1.5 right-1.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-semibold">{unread}</span>}
               </Button>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 ml-1 rounded-full hover:bg-accent p-1 pr-3 transition">
-                    <Avatar className="h-8 w-8">
+                {/* <DropdownMenuTrigger asChild> */}
+                  {/* <button className="flex items-center gap-2 ml-1 rounded-full hover:bg-accent p-1 pr-3 transition"> */}
+                    <Badge variant="secondary" className="text-[12px] p-3 h-4 capitalize">{user?.role}</Badge>
+                    {/* <Avatar className="h-8 w-8">
                       <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">{initials}</AvatarFallback>
                     </Avatar>
                     <span className="hidden sm:flex flex-col items-start">
                       <span className="text-sm font-medium leading-none">{user?.name}</span>
                       <Badge variant="secondary" className="text-[10px] mt-0.5 h-4 capitalize">{user?.role}</Badge>
-                    </span>
-                  </button>
-                </DropdownMenuTrigger>
+                    </span> */}
+                  {/* </button> */}
+                {/* </DropdownMenuTrigger> */}
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
