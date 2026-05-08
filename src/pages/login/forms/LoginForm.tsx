@@ -30,7 +30,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
-      const result = login(data.email, data.password);
+      const result = await login(data.email, data.password);
       if (result.success) {
         toast.success("Welcome back!", { position: "top-right" });
         onSuccess();

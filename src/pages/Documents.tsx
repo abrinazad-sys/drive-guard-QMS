@@ -3,57 +3,72 @@ import { PageHeader, StatusBadge, FileIcon } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { folders, files } from "@/lib/mock-data";
 import { FolderOpen, Search, Download, Eye, MoreVertical, ChevronRight, Loader2, Check, ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useFolders, useFolderContents, downloadFile } from "@/services/fileService";
+import type { FileDto, FolderDto } from "@/dto/FolderDto";
 
 export default function Documents() {
-  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [previewFile, setPreviewFile] = useState<typeof files[0] | null>(null);
-  const [detailFile, setDetailFile] = useState<typeof files[0] | null>(null);
+  const [previewFile, setPreviewFile] = useState<FileDto | null>(null);
+  const [detailFile, setDetailFile] = useState<FileDto | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloaded, setDownloaded] = useState<string | null>(null);
 
-  const folder = folders.find(f => f.id === currentFolder);
-  const folderFiles = currentFolder ? files.filter(f => f.folder === folder?.name) : [];
+  const { data: rootFolders = [], isLoading: loadingRoot } = useFolders();
+  const { data: folderContents, isLoading: loadingContents } = useFolderContents(currentFolderId || "");
 
-  const filteredFolders = !currentFolder ? folders.filter(f => f.name.toLowerCase().includes(search.toLowerCase())) : [];
-  const filteredFiles = folderFiles.filter(f =>
-    f.name.toLowerCase().includes(search.toLowerCase()) && (filter === "all" || f.type === filter)
+  const foldersToDisplay = currentFolderId ? folderContents?.folders || [] : rootFolders;
+  const filesToDisplay = currentFolderId ? folderContents?.files || [] : [];
+
+  const filteredFolders = foldersToDisplay.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredFiles = filesToDisplay.filter(f =>
+    f.name.toLowerCase().includes(search.toLowerCase()) && (filter === "all" || f.extension === filter)
   );
 
-  const handleDownload = (id: string) => {
+  const handleDownload = async (id: string, name: string) => {
     setDownloading(id);
-    setTimeout(() => {
-      setDownloading(null);
+    try {
+      await downloadFile(id, name);
       setDownloaded(id);
       toast.success("File downloaded successfully");
       setTimeout(() => setDownloaded(null), 1500);
-    }, 1000);
+    } catch (error) {
+      toast.error("Failed to download file");
+    } finally {
+      setDownloading(null);
+    }
   };
+
+  const isLoading = loadingRoot || (currentFolderId && loadingContents);
 
   return (
     <div className="space-y-6">
       <PageHeader title="Documents" description="Browse folders and files synced from Google Drive." />
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <button onClick={() => setCurrentFolder(null)} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
+        <button onClick={() => setCurrentFolderId(null)} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
           <FolderOpen className="h-4 w-4" />Home
         </button>
-        {folder && (<><ChevronRight className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{folder.parent}</span><ChevronRight className="h-4 w-4 text-muted-foreground" /><span className="font-medium text-primary">{folder.name}</span></>)}
+        {currentFolderId && (
+          <>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium text-primary">Current Folder</span>
+          </>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={currentFolder ? "Search files in this folder..." : "Search folders..."} className="pl-9" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={currentFolderId ? "Search files/folders in this folder..." : "Search folders..."} className="pl-9" />
         </div>
-        {currentFolder && (
+        {currentFolderId && (
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -64,49 +79,42 @@ export default function Documents() {
             </SelectContent>
           </Select>
         )}
-        {currentFolder && <Button variant="outline" onClick={() => setCurrentFolder(null)}><ArrowLeft className="h-4 w-4 mr-2" />Back</Button>}
+        {currentFolderId && <Button variant="outline" onClick={() => setCurrentFolderId(null)}><ArrowLeft className="h-4 w-4 mr-2" />Back</Button>}
       </div>
 
-      {!currentFolder && (
-        <>
-          {filteredFolders.length === 0 ? (
-            <EmptyState title="No folders found" description="Try a different search term." />
-          ) : (
+      {isLoading ? (
+        <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
+      ) : (
+        <div className="space-y-6">
+          {filteredFolders.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {filteredFolders.map(f => (
-                <button key={f.id} onClick={() => setCurrentFolder(f.id)} className="text-left p-4 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent transition group">
+                <button key={f.id} onClick={() => setCurrentFolderId(f.id)} className="text-left p-4 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent transition group">
                   <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary-soft flex items-center justify-center shrink-0"><FolderOpen className="h-5 w-5 text-primary" /></div>
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0"><FolderOpen className="h-5 w-5 text-primary" /></div>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate group-hover:text-primary transition">{f.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">{f.parent}</div>
-                      <div className="text-xs text-muted-foreground mt-2">{f.itemCount} items · {f.modified}</div>
+                      <div className="text-xs text-muted-foreground mt-1">Folder · {new Date(f.modifiedAt).toLocaleDateString()}</div>
                     </div>
                   </div>
                 </button>
               ))}
             </div>
           )}
-        </>
-      )}
 
-      {currentFolder && (
-        <>
-          {filteredFiles.length === 0 ? (
-            <EmptyState title="This folder is empty" description="No files match your filters." />
-          ) : (
+          {filteredFiles.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {filteredFiles.map(f => (
                 <Card key={f.id} className="p-4 hover:border-primary transition">
                   <div className="flex items-start gap-3">
-                    <FileIcon type={f.type} />
+                    <FileIcon type={f.extension} />
                     <div className="flex-1 min-w-0">
                       <button onClick={() => setDetailFile(f)} className="font-medium truncate text-left hover:text-primary block w-full">{f.name}</button>
-                      <div className="text-xs text-muted-foreground mt-0.5">{f.size} · {f.modified}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{f.size} · {new Date(f.modifiedAt).toLocaleDateString()}</div>
                       <div className="flex items-center gap-1 mt-3">
                         <Button size="sm" variant="outline" onClick={() => setPreviewFile(f)}><Eye className="h-3 w-3 mr-1" />Preview</Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDownload(f.id)} disabled={downloading === f.id}>
-                          {downloading === f.id ? <Loader2 className="h-3 w-3 animate-spin" /> : downloaded === f.id ? <Check className="h-3 w-3 text-success" /> : <Download className="h-3 w-3" />}
+                        <Button size="sm" variant="outline" onClick={() => handleDownload(f.id, f.name)} disabled={downloading === f.id}>
+                          {downloading === f.id ? <Loader2 className="h-3 w-3 animate-spin" /> : downloaded === f.id ? <Check className="h-3 w-3 text-green-600" /> : <Download className="h-3 w-3" />}
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => setDetailFile(f)}><MoreVertical className="h-3 w-3" /></Button>
                       </div>
@@ -116,24 +124,29 @@ export default function Documents() {
               ))}
             </div>
           )}
-        </>
+
+          {filteredFolders.length === 0 && filteredFiles.length === 0 && (
+            <EmptyState title="Nothing here" description="This folder is empty or no items match your search." />
+          )}
+        </div>
       )}
 
       <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{previewFile?.name}</DialogTitle>
-            <DialogDescription>Google Drive viewer preview</DialogDescription>
+            <DialogDescription>Document Preview</DialogDescription>
           </DialogHeader>
           <div className="aspect-video bg-muted rounded-lg flex items-center justify-center border border-border">
             <div className="text-center">
-              <FileIcon type={previewFile?.type || "other"} />
-              <div className="text-sm text-muted-foreground mt-3">Preview placeholder</div>
+              <FileIcon type={previewFile?.extension || "other"} />
+              <div className="text-sm text-muted-foreground mt-3 font-medium">Preview available in Google Drive</div>
+              <Button variant="link" className="mt-2" onClick={() => previewFile && window.open(previewFile.webViewLink, "_blank")}>Open in Drive</Button>
             </div>
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="outline" onClick={() => setPreviewFile(null)}>Close</Button>
-            <Button onClick={() => previewFile && handleDownload(previewFile.id)}><Download className="h-4 w-4 mr-2" />Download</Button>
+            <Button onClick={() => previewFile && handleDownload(previewFile.id, previewFile.name)}><Download className="h-4 w-4 mr-2" />Download</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -143,17 +156,15 @@ export default function Documents() {
           <SheetHeader><SheetTitle>File Details</SheetTitle></SheetHeader>
           {detailFile && (
             <div className="space-y-4 mt-6">
-              <div className="flex items-center gap-3"><FileIcon type={detailFile.type} /><div><div className="font-semibold">{detailFile.name}</div><div className="text-xs text-muted-foreground">{detailFile.size}</div></div></div>
+              <div className="flex items-center gap-3"><FileIcon type={detailFile.extension} /><div><div className="font-semibold">{detailFile.name}</div><div className="text-xs text-muted-foreground">{detailFile.size}</div></div></div>
               <dl className="space-y-2 text-sm">
-                <Row k="Type" v={detailFile.type.toUpperCase()} />
-                <Row k="Folder" v={detailFile.folder} />
-                <Row k="Modified" v={detailFile.modified} />
-                <Row k="Owner" v={detailFile.owner} />
-                <Row k="Sync" v={<StatusBadge status={detailFile.syncStatus} />} />
+                <Row k="Type" v={detailFile.extension.toUpperCase()} />
+                <Row k="Modified" v={new Date(detailFile.modifiedAt).toLocaleString()} />
+                <Row k="Preview" v={<Button variant="link" className="p-0 h-auto text-xs" onClick={() => window.open(detailFile.webViewLink, "_blank")}>View on Drive</Button>} />
               </dl>
               <div className="flex gap-2 pt-4">
                 <Button className="flex-1" onClick={() => { setPreviewFile(detailFile); setDetailFile(null); }}><Eye className="h-4 w-4 mr-2" />Preview</Button>
-                <Button className="flex-1" variant="outline" onClick={() => handleDownload(detailFile.id)}><Download className="h-4 w-4 mr-2" />Download</Button>
+                <Button className="flex-1" variant="outline" onClick={() => handleDownload(detailFile.id, detailFile.name)}><Download className="h-4 w-4 mr-2" />Download</Button>
               </div>
             </div>
           )}

@@ -1,16 +1,27 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from "react";
+import { loginApi } from "@/services/authService";
 import type { Role } from "@/lib/mock-data";
 
 export interface AuthUser {
-  id: string;
+  id: string | number;
   name: string;
   email: string;
-  role: Role;
+  role: string;
+  passwordChangeRequired?: boolean;
 }
 
 interface AuthCtx {
   user: AuthUser | null;
-  login: (email: string, password: string) => { success: boolean; error?: string; mustReset?: boolean };
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; error?: string; mustReset?: boolean }>;
   logout: () => void;
   completeReset: () => void;
   mustReset: boolean;
@@ -18,34 +29,57 @@ interface AuthCtx {
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
-const DEMO = [
-  { email: "admin@qms.com", password: "password123", user: { id: "u1", name: "Aisha Rahman", email: "admin@qms.com", role: "admin" as Role } },
-  { email: "employee@qms.com", password: "password123", user: { id: "u3", name: "Sarah Ahmed", email: "employee@qms.com", role: "employee" as Role } },
-];
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => {
-    const stored = localStorage.getItem("qms_user");
+    const stored = localStorage.getItem("USER");
     return stored ? JSON.parse(stored) : null;
   });
   const [mustReset, setMustReset] = useState(false);
 
   useEffect(() => {
-    if (user) localStorage.setItem("qms_user", JSON.stringify(user));
-    else localStorage.removeItem("qms_user");
+    if (user) {
+      localStorage.setItem("USER", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("USER");
+      // localStorage.removeItem("token");
+    }
   }, [user]);
 
-  const login = (email: string, password: string) => {
-    const match = DEMO.find(d => d.email === email.toLowerCase().trim());
-    if (!match) return { success: false, error: "No account found with that email." };
-    if (match.password !== password) return { success: false, error: "Incorrect password. Please try again." };
-    setUser(match.user);
-    return { success: true };
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await loginApi(email, password);
+      if (response.success && response.data) {
+        localStorage.setItem("token", response.data.accessToken);
+        setUser(response.data.user);
+        setMustReset(response.data.user.passwordChangeRequired);
+        return {
+          success: true,
+          mustReset: response.data.user.passwordChangeRequired,
+        };
+      }
+      return { success: false, error: "Login failed." };
+    } catch (error: any) {
+      return {
+        success: false,
+        error:
+          error.response?.data?.message || "Login failed due to server error.",
+      };
+    }
   };
-  const logout = () => setUser(null);
+
+  const logout = () => {
+    localStorage.clear();
+    setUser(null);
+  };
   const completeReset = () => setMustReset(false);
 
-  return <AuthContext.Provider value={{ user, login, logout, mustReset, completeReset }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{ user, login, logout, mustReset, completeReset }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export const useAuth = () => {

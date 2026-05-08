@@ -8,14 +8,46 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Sun, Moon, Monitor, Check, RotateCcw } from "lucide-react";
+import { Sun, Moon, Monitor, Check, RotateCcw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useState } from "react";
+import { useUpdatePassword, getApiErrorMessage } from "@/services/authService";
 
 export default function Profile() {
   const { user } = useAuth();
   const { mode, accent, setMode, setAccent, reset } = useTheme();
-  const initials = user?.name.split(" ").map(s => s[0]).join("").slice(0, 2).toUpperCase() || "U";
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const updatePasswordMutation = useUpdatePassword();
+
+  const initials = user?.name ? user.name.split(" ").map(s => s[0]).join("").slice(0, 2).toUpperCase() : "U";
+
+  const handlePasswordUpdate = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error("All fields are required");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+    updatePasswordMutation.mutate(
+      { currentPassword, newPassword },
+      {
+        onSuccess: () => {
+          toast.success("Password updated successfully");
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+        },
+        onError: (err) => {
+          toast.error(getApiErrorMessage(err));
+        },
+      }
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -37,8 +69,8 @@ export default function Profile() {
                 <div><div className="font-semibold text-lg">{user?.name}</div><Badge variant="secondary" className="capitalize mt-1">{user?.role}</Badge></div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label>Full name</Label><Input defaultValue={user?.name} /></div>
-                <div className="space-y-1.5"><Label>Email</Label><Input defaultValue={user?.email} /></div>
+                <div className="space-y-1.5"><Label>Full name</Label><Input defaultValue={user?.name} readOnly /></div>
+                <div className="space-y-1.5"><Label>Email</Label><Input defaultValue={user?.email} readOnly /></div>
               </div>
               <Button onClick={() => toast.success("Profile updated")}>Save changes</Button>
             </CardContent>
@@ -49,10 +81,22 @@ export default function Profile() {
           <Card>
             <CardHeader><CardTitle>Password & Security</CardTitle><CardDescription>Update your account password</CardDescription></CardHeader>
             <CardContent className="space-y-3 max-w-md">
-              <div className="space-y-1.5"><Label>Current password</Label><Input type="password" /></div>
-              <div className="space-y-1.5"><Label>New password</Label><Input type="password" /></div>
-              <div className="space-y-1.5"><Label>Confirm new password</Label><Input type="password" /></div>
-              <Button onClick={() => toast.success("Password updated successfully")}>Change password</Button>
+              <div className="space-y-1.5">
+                <Label>Current password</Label>
+                <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>New password</Label>
+                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Confirm new password</Label>
+                <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+              </div>
+              <Button onClick={handlePasswordUpdate} disabled={updatePasswordMutation.isPending}>
+                {updatePasswordMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Change password
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
