@@ -7,7 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import AppLayout from "@/components/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Login from "@/pages/Login";
+import Login from "@/pages/login/Login";
 import Dashboard from "@/pages/Dashboard";
 import Documents from "@/pages/Documents";
 import UsersPage from "@/pages/UsersPage";

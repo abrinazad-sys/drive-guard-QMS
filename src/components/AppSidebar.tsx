@@ -1,6 +1,30 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, FileText, Users, Shield, ScrollText, Activity, Bell, User, Settings, LogOut, FolderOpen } from "lucide-react";
-import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
+import {
+  LayoutDashboard,
+  FileText,
+  Users,
+  Shield,
+  ScrollText,
+  Activity,
+  Bell,
+  User,
+  Settings,
+  LogOut,
+  FolderOpen,
+} from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
@@ -13,7 +37,7 @@ const adminNav = [
   { title: "Permissions", url: "/permissions", icon: Shield },
   { title: "Audit Logs", url: "/audit", icon: ScrollText },
   { title: "Sync Health", url: "/sync", icon: Activity },
-  { title: "Notifications", url: "/notifications", icon: Bell },
+  // { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Profile", url: "/profile", icon: User },
   { title: "System Settings", url: "/settings", icon: Settings },
 ];
@@ -21,7 +45,7 @@ const adminNav = [
 const employeeNav = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "My Documents", url: "/documents", icon: FolderOpen },
-  { title: "Notifications", url: "/notifications", icon: Bell },
+  // { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Profile", url: "/profile", icon: User },
 ];
 
@@ -42,14 +66,27 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        <div className={cn("flex items-center gap-2 px-4 h-16 border-b border-sidebar-border", collapsed && "justify-center px-0")}>
-          <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold shrink-0">Q</div>
-          {!collapsed && (
-            <div>
-              <div className="font-semibold tracking-tight">Drive Guard</div>
-              <div className="text-xs text-muted-foreground">Bedata QMS</div>
-            </div>
+        <div
+          className={cn(
+            "flex items-center justify-between px-4 h-16 border-b border-sidebar-border",
+            collapsed && "justify-center px-0",
           )}
+        >
+          <div className="flex items-center gap-2">
+            {/* <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold shrink-0">Q</div> */}
+            {!collapsed && (
+              <div>
+                <img
+                  src="/images/bedata.png"
+                  alt="BeData"
+                  className="h-8 w-auto shrink-0 dark:invert"
+                />
+                {/* <div className="font-semibold tracking-tight">Drive Guard</div> */}
+                {/* <div className="text-xs text-muted-foreground">Bedata QMS</div> */}
+              </div>
+            )}
+          </div>
+          <SidebarTrigger />
         </div>
         <SidebarGroup>
           <SidebarGroupLabel>Main</SidebarGroupLabel>
@@ -60,7 +97,10 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={active}>
-                      <NavLink to={item.url} className="flex items-center gap-3">
+                      <NavLink
+                        to={item.url}
+                        className="flex items-center gap-3"
+                      >
                         <item.icon className="h-4 w-4 shrink-0" />
                         {!collapsed && <span>{item.title}</span>}
                       </NavLink>
@@ -77,7 +117,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-                {/* ── User Footer ── */}
+        {/* ── User Footer ── */}
         <SidebarFooter className="p-4 pt-0 border-t border-transparent dark:border-[#1e2d3d] mt-2">
           {collapsed ? (
             <div className="flex justify-center mt-4">
@@ -88,7 +128,10 @@ export function AppSidebar() {
                 className="h-10 w-10 rounded-full overflow-hidden p-0 border-gray-200 dark:border-gray-800 shrink-0"
               >
                 <Avatar className="h-full w-full">
-                  <AvatarImage src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name ?? 'User')}&background=random`} alt={user?.name ?? 'User'} />
+                  <AvatarImage
+                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name ?? "User")}&background=random`}
+                    alt={user?.name ?? "User"}
+                  />
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
               </Button>
@@ -98,7 +141,10 @@ export function AppSidebar() {
               <div className="flex items-center gap-3 overflow-hidden">
                 <div className="h-10 w-10 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 shrink-0">
                   <Avatar className="h-full w-full">
-                    <AvatarImage src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name ?? 'User')}&background=random`} alt={user?.name ?? 'User'} />
+                    <AvatarImage
+                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name ?? "User")}&background=random`}
+                      alt={user?.name ?? "User"}
+                    />
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                 </div>
