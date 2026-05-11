@@ -78,7 +78,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.clear();
     setUser(null);
   };
-  const completeReset = () => setMustReset(false);
+  const completeReset = () => {
+    setMustReset(false);
+    setUser((prev) => {
+      if (!prev) return prev;
+      return { ...prev, passwordChangeRequired: false };
+    });
+  };
+
 
   return (
     <AuthContext.Provider

@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { FileText, FileSpreadsheet, Image, Presentation, File } from "lucide-react";
 
 interface Props {
   label: string;
@@ -58,13 +59,13 @@ export function StatusBadge({ status }: { status: string }) {
     pending: "bg-warning/15 text-warning border-warning/30",
     failed: "bg-destructive/15 text-destructive border-destructive/30",
     active: "bg-success/15 text-success border-success/30",
+    deactive: "bg-destructive/15 text-destructive border-destructive/30",
     inactive: "bg-muted text-muted-foreground border-border",
   };
   const cls = map[status.toLowerCase()] || "bg-muted text-muted-foreground border-border";
   return <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border capitalize", cls)}>{status}</span>;
 }
 
-import { FileText, FileSpreadsheet, Image, Presentation, File } from "lucide-react";
 export function FileIcon({ type }: { type: string }) {
   const map: Record<string, { icon: typeof FileText; color: string }> = {
     pdf: { icon: FileText, color: "text-red-500 bg-red-500/10" },
@@ -126,7 +127,7 @@ export function UserAvatar({
   );
 }
 
-type StatusType = "synced" | "pending" | "failed" | "active" | "disabled" | "admin" | "user";
+type StatusType = "synced" | "pending" | "failed" | "active" | "deactive" | "disabled" | "admin" | "user";
 
 export function StatusPill({ status }: { status: StatusType }) {
   const styles = {
@@ -134,6 +135,7 @@ export function StatusPill({ status }: { status: StatusType }) {
     pending: "bg-warning/15 text-warning border-warning/30",
     failed: "bg-destructive/15 text-destructive border-destructive/30",
     active: "bg-success/15 text-success border-success/30",
+    deactive: "bg-destructive/15 text-destructive border-destructive/30",
     disabled: "bg-muted text-muted-foreground border-border",
     admin: 'bg-primary/15 text-primary border-primary/30',
     user: 'bg-secondary text-secondary-foreground border-secondary',
@@ -144,6 +146,7 @@ export function StatusPill({ status }: { status: StatusType }) {
     pending: "Pending",
     failed: "Failed",
     active: "Active",
+    deactive: "Deactive",
     disabled: "Disabled",
     admin: 'Admin',
     user: 'User',

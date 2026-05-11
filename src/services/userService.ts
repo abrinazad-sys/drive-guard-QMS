@@ -98,3 +98,19 @@ export function useUpdateUserAdmin() {
     },
   });
 }
+
+export function useResetPasswordAdmin() {
+  return useMutation<
+    { success: boolean; data: { message: string } },
+    AxiosError<ApiErrorResponse>,
+    { id: number; temporaryPassword: string }
+  >({
+    mutationFn: async ({ id, temporaryPassword }) => {
+      const { data } = await axios.post<{
+        success: boolean;
+        data: { message: string };
+      }>(`/admin/users/${id}/reset-password`, { temporaryPassword });
+      return data;
+    },
+  });
+}

@@ -53,6 +53,7 @@ import {
   useAdminUsers,
   useCreateUser,
   useUpdateUserAdmin,
+  useResetPasswordAdmin,
   type UserDto,
 } from "@/services/userService";
 import { getApiErrorMessage } from "@/services/authService";
@@ -106,6 +107,11 @@ export default function Users() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [userToToggle, setUserToToggle] = useState<UserDto | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<UserDto | null>(
+    null,
+  );
+  const [tempPassword, setTempPassword] = useState("");
+  const resetPasswordMutation = useResetPasswordAdmin();
 
   // Create form state
   const [newName, setNewName] = useState("");
@@ -221,6 +227,25 @@ export default function Users() {
     );
   };
 
+  const handleResetPassword = () => {
+    if (!resetPasswordUser || !tempPassword) {
+      toast.error("Please enter a temporary password");
+      return;
+    }
+    resetPasswordMutation.mutate(
+      { id: resetPasswordUser.id, temporaryPassword: tempPassword },
+      {
+        onSuccess: (res) => {
+          toast.success(res.data.message);
+          setResetPasswordUser(null);
+          setTempPassword("");
+          refetch();
+        },
+        onError: (err) => toast.error(getApiErrorMessage(err as any)),
+      },
+    );
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -248,10 +273,13 @@ export default function Users() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                id="users-search"
+                name="users-search"
                 placeholder="Search users by name or email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
+                autoComplete="off"
               />
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -355,11 +383,12 @@ export default function Users() {
                               Edit User
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() =>
-                                toast.success("Password reset email sent")
-                              }
+                              onClick={() => {
+                                setResetPasswordUser(u);
+                                setTempPassword("");
+                              }}
                             >
-                              Reset password
+                              Reset Password
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               disabled={u.role === "admin"}
@@ -368,7 +397,7 @@ export default function Users() {
                                 setConfirmOpen(true);
                               }}
                             >
-                              {u.isActive ? "Deactivate" : "Activate"}
+                              {/* {u.isActive ? "Deactivate" : "Activate"} */}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -400,21 +429,27 @@ export default function Users() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label>Full name</Label>
+              <Label htmlFor="new-user-name">Full name</Label>
               <Input
+                id="new-user-name"
+                name="new-user-name"
                 placeholder="Jane Doe"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
+                autoComplete="off"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Email</Label>
+              <Label htmlFor="new-user-email">Email</Label>
               <div className="relative">
                 <Input
+                  id="new-user-email"
+                  name="new-user-email"
                   placeholder="jane.doe"
                   value={newEmailPrefix}
                   onChange={(e) => setNewEmailPrefix(e.target.value)}
                   className="pr-[165px]"
+                  autoComplete="off"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none select-none">
                   @bedatasolutions.com
@@ -434,14 +469,17 @@ export default function Users() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Initial password</Label>
+              <Label htmlFor="new-user-password">Initial password</Label>
               <div className="relative">
                 <Input
+                  id="new-user-password"
+                  name="new-user-password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="pr-10"
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"
@@ -564,6 +602,67 @@ export default function Users() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={!!resetPasswordUser}
+        onOpenChange={(open) => !open && setResetPasswordUser(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">
+              Reset User Password
+            </DialogTitle>
+            <DialogDescription>
+              Set a temporary password for{" "}
+              <strong>{resetPasswordUser?.name}</strong>. The user will be
+              forced to change it on their next login.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="temp-password">Temporary Password</Label>
+              <div className="relative">
+                <Input
+                  id="temp-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter temporary password"
+                  value={tempPassword}
+                  onChange={(e) => setTempPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setResetPasswordUser(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleResetPassword}
+              disabled={resetPasswordMutation.isPending || !tempPassword}
+            >
+              {resetPasswordMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              )}
+              Confirm Reset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

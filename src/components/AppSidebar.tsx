@@ -36,7 +36,7 @@ const adminNav = [
   { title: "Users", url: "/users", icon: Users },
   { title: "Permissions", url: "/permissions", icon: Shield },
   { title: "Audit Logs", url: "/audit", icon: ScrollText },
-  { title: "Sync Health", url: "/sync", icon: Activity },
+  // { title: "Sync Health", url: "/sync", icon: Activity },
   // { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Profile", url: "/profile", icon: User },
   { title: "System Settings", url: "/settings", icon: Settings },

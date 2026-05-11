@@ -1,13 +1,14 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { MetricCard, PageHeader, StatusBadge } from "@/components/shared";
-import { Users, FolderOpen, AlertTriangle, Download, Cloud, RefreshCw, ChevronRight, Clock, Loader2 } from "lucide-react";
+import { Users, FolderOpen, AlertTriangle, Download, Cloud, RefreshCw, ChevronRight, Clock, Loader2, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { auditLogs } from "@/lib/mock-data";
+import { auditService, type AuditLog } from "@/services/auditService";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
 import { useFolders } from "@/services/fileService";
 import { useAdminUsers } from "@/services/userService";
+import { useState, useEffect } from "react";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -18,6 +19,11 @@ function AdminDashboard() {
   const nav = useNavigate();
   const { data: rootFolders = [], isLoading: loadingFolders, refetch: refetchFolders } = useFolders();
   const { data: users = [], isLoading: loadingUsers } = useAdminUsers();
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+
+  useEffect(() => {
+    setLogs(auditService.getLogs().slice(0, 6));
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -45,16 +51,22 @@ function AdminDashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {auditLogs.slice(0, 6).map(a => (
+                {logs.length > 0 ? logs.map(a => (
                   <TableRow key={a.id}>
-                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground">{a.time}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                      {new Date(a.time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                    </TableCell>
                     <TableCell className="font-medium whitespace-nowrap">{a.actor}</TableCell>
                     <TableCell className="whitespace-nowrap">{a.action}</TableCell>
                     <TableCell className="whitespace-nowrap">{a.target}</TableCell>
                     <TableCell className="whitespace-nowrap">{a.folder}</TableCell>
                     <TableCell><StatusBadge status={a.status} /></TableCell>
                   </TableRow>
-                ))}
+                )) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No recent activity found.</TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -99,6 +111,17 @@ function EmployeeDashboard() {
   const { user } = useAuth();
   const nav = useNavigate();
   const { data: rootFolders = [], isLoading: loadingFolders } = useFolders();
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      const allLogs = auditService.getLogs();
+      const userRelevantLogs = allLogs.filter(l => 
+        l.actor === user.name || l.target === user.name
+      ).slice(0, 5);
+      setLogs(userRelevantLogs);
+    }
+  }, [user]);
   
   return (
     <div className="space-y-6">
@@ -135,8 +158,28 @@ function EmployeeDashboard() {
       </Card>
       <Card>
         <CardHeader><CardTitle>Recent Activity</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div className="text-sm text-muted-foreground">Activity tracking will be available soon with real-time sync.</div>
+        <CardContent className="space-y-4">
+          {logs.length > 0 ? (
+            logs.map(l => (
+              <div key={l.id} className="flex items-center justify-between text-sm border-b border-border last:border-0 pb-3 last:pb-0">
+                <div className="flex items-center gap-3">
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${l.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {l.action.includes('Grant') ? <Check className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                  </div>
+                  <div>
+                    <div className="font-medium">{l.action}</div>
+                    <div className="text-xs text-muted-foreground">{l.folder}</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground">{new Date(l.time).toLocaleDateString()}</div>
+                  <StatusBadge status={l.status} />
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-sm text-muted-foreground py-4 text-center">No recent activity recorded for your account.</div>
+          )}
         </CardContent>
       </Card>
     </div>

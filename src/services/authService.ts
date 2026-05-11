@@ -39,15 +39,28 @@ interface UpdatePasswordResponse {
 export const getApiErrorMessage = (err: AxiosError<ApiErrorResponse>) =>
   err.response?.data?.message || err.message;
 
-export async function loginApi(email: string, password: string): Promise<LoginResponse> {
-  const { data } = await axios.post<LoginResponse>("/auth/login", { email, password });
+export async function loginApi(
+  email: string,
+  password: string,
+): Promise<LoginResponse> {
+  const { data } = await axios.post<LoginResponse>("/auth/login", {
+    email,
+    password,
+  });
   return data;
 }
 
 export function useUpdatePassword() {
-  return useMutation<UpdatePasswordResponse, AxiosError<ApiErrorResponse>, UpdatePasswordRequest>({
+  return useMutation<
+    UpdatePasswordResponse,
+    AxiosError<ApiErrorResponse>,
+    UpdatePasswordRequest
+  >({
     mutationFn: async (payload) => {
-      const { data } = await axios.post<UpdatePasswordResponse>("/auth/update-password", payload);
+      const { data } = await axios.post<UpdatePasswordResponse>(
+        "/auth/update-password",
+        payload,
+      );
       if (!data.success) {
         throw new Error("Failed to update password");
       }
@@ -61,9 +74,16 @@ export interface ChangePasswordRequest {
 }
 
 export function useChangePassword() {
-  return useMutation<UpdatePasswordResponse, AxiosError<ApiErrorResponse>, ChangePasswordRequest>({
+  return useMutation<
+    UpdatePasswordResponse,
+    AxiosError<ApiErrorResponse>,
+    ChangePasswordRequest
+  >({
     mutationFn: async (payload) => {
-      const { data } = await axios.post<UpdatePasswordResponse>("/auth/change-password", payload);
+      const { data } = await axios.post<UpdatePasswordResponse>(
+        "/auth/change-password",
+        payload,
+      );
       if (!data.success) {
         throw new Error("Failed to change password");
       }

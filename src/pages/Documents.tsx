@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader, StatusBadge, FileIcon, UserAvatar, StatusPill } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,28 +9,41 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useFolders, useFolderContents, downloadFile } from "@/services/fileService";
+import { useAdminUsers } from "@/services/userService";
+import { useGrantPermission, useFolderPermissions, useRevokePermission } from "@/services/permissionService";
+import { auditService } from "@/services/auditService";
 import type { FileDto, FolderDto } from "@/dto/FolderDto";
-
-const usersWithAccess = [
-  { name: "Sara Johnson", email: "sara.j@company.com", status: "synced" as const },
-  { name: "Michael Chen", email: "m.chen@company.com", status: "synced" as const },
-  { name: "Emma Wilson", email: "e.wilson@company.com", status: "pending" as const },
-  { name: "David Lee", email: "d.lee@company.com", status: "synced" as const },
-];
 
 export default function Documents() {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [accessPanelFolder, setAccessPanelFolder] = useState<FolderDto | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [previewFile, setPreviewFile] = useState<FileDto | null>(null);
   const [detailFile, setDetailFile] = useState<FileDto | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloaded, setDownloaded] = useState<string | null>(null);
+  const [grantPermissionFolder, setGrantPermissionFolder] = useState<FolderDto | null>(null);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [revokingUserId, setRevokingUserId] = useState<number | null>(null);
 
   const { data: rootFolders = [], isLoading: loadingRoot } = useFolders();
   const { data: folderContents, isLoading: loadingContents } = useFolderContents(currentFolderId || "");
+  const { data: allUsers = [] } = useAdminUsers();
+  const grantPermissionMutation = useGrantPermission();
+  const revokePermissionMutation = useRevokePermission();
+  const { data: folderPermissions = [], isLoading: loadingPermissions, refetch: refetchPermissions } = useFolderPermissions(accessPanelFolder?.id || null);
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const foldersToDisplay = currentFolderId ? folderContents?.folders || [] : rootFolders;
   const filesToDisplay = currentFolderId ? folderContents?.files || [] : [];
@@ -37,6 +51,11 @@ export default function Documents() {
   const filteredFolders = foldersToDisplay.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
   const filteredFiles = filesToDisplay.filter(f =>
     f.name.toLowerCase().includes(search.toLowerCase()) && (filter === "all" || f.extension === filter)
+  );
+
+  const filteredUsers = allUsers.filter(u =>
+    u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+    u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
   );
 
   const handleDownload = async (id: string, name: string) => {
@@ -53,11 +72,56 @@ export default function Documents() {
     }
   };
 
+  const handleGrantPermission = () => {
+    if (!grantPermissionFolder || selectedUserIds.length === 0) return;
+
+    grantPermissionMutation.mutate(
+      {
+        folderId: grantPermissionFolder.id,
+        userIds: selectedUserIds,
+      },
+      {
+        onSuccess: () => {
+          // Audit Log
+          selectedUserIds.forEach(userId => {
+            const user = allUsers.find(u => u.id === userId);
+            auditService.addLog({
+              actor: "Admin",
+              role: "admin",
+              action: "Granted access",
+              target: user?.name || `User ${userId}`,
+              folder: grantPermissionFolder.name,
+              status: "active"
+            });
+          });
+
+          toast.success("Permissions granted successfully");
+          setGrantPermissionFolder(null);
+          setSelectedUserIds([]);
+        },
+        onError: () => {
+          // Audit Log
+          selectedUserIds.forEach(userId => {
+            const user = allUsers.find(u => u.id === userId);
+            auditService.addLog({
+              actor: "Admin",
+              role: "admin",
+              action: "Granted access",
+              target: user?.name || `User ${userId}`,
+              folder: grantPermissionFolder.name,
+              status: "deactive"
+            });
+          });
+        }
+      },
+    );
+  };
+
   const isLoading = loadingRoot || (currentFolderId && loadingContents);
 
   return (
     <div className="relative h-full">
-      <div className={`space-y-6 transition-opacity duration-200 ${isPanelOpen ? "opacity-40" : "opacity-100"}`}>
+      <div className={`space-y-6 transition-opacity duration-200 ${accessPanelFolder ? "opacity-40" : "opacity-100"}`}>
       <PageHeader title="Documents" description="Browse folders and files synced from Google Drive." />
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -89,13 +153,17 @@ export default function Documents() {
           </Select>
         )}
         {currentFolderId && <Button variant="outline" onClick={() => setCurrentFolderId(null)}><ArrowLeft className="h-4 w-4 mr-2" />Back</Button>}
-        {currentFolderId && (
+        {currentFolderId && isAdmin && (
           <Button
             variant="outline"
-            onClick={() => setIsPanelOpen(true)}
+            onClick={() => {
+              const current = foldersToDisplay.find(f => f.id === currentFolderId) || rootFolders.find(f => f.id === currentFolderId);
+              if (current) setAccessPanelFolder(current);
+              else setAccessPanelFolder({ id: currentFolderId, name: "Current Folder", type: "folder", modifiedAt: "", parentId: null });
+            }}
             className="rounded-xl border-border hover:bg-accent hover:text-accent-foreground"
           >
-            Manage User
+            Manage Access
           </Button>
         )}
       </div>
@@ -107,15 +175,41 @@ export default function Documents() {
           {filteredFolders.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {filteredFolders.map(f => (
-                <button key={f.id} onClick={() => setCurrentFolderId(f.id)} className="text-left p-4 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent transition group">
-                  <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0"><FolderOpen className="h-5 w-5 text-primary" /></div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate group-hover:text-primary transition">{f.name}</div>
-                      <div className="text-xs text-muted-foreground mt-1">Folder · {new Date(f.modifiedAt).toLocaleDateString()}</div>
+                <div key={f.id} className="relative group">
+                  <div
+                    onClick={() => setCurrentFolderId(f.id)}
+                    className="p-4 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent transition cursor-pointer"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <FolderOpen className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0 pr-6">
+                        <div className="font-medium truncate group-hover:text-primary transition">{f.name}</div>
+                        <div className="text-xs text-muted-foreground mt-1">Folder · {new Date(f.modifiedAt).toLocaleDateString()}</div>
+                      </div>
                     </div>
                   </div>
-                </button>
+                  {isAdmin && (
+                    <div className="absolute top-2 right-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setGrantPermissionFolder(f)}>
+                            Grant Permission
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setAccessPanelFolder(f)}>
+                            Manage Access
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -190,38 +284,176 @@ export default function Documents() {
       </Sheet>
       </div>
 
-      {isPanelOpen && (
+      {accessPanelFolder && (
         <div className="fixed top-0 right-0 w-[380px] h-full bg-background border-l border-border p-6 shadow-xl z-50 overflow-y-auto">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-semibold text-foreground">Users with Access</h3>
-            <button onClick={() => setIsPanelOpen(false)} className="text-muted-foreground hover:text-foreground">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xl font-semibold text-foreground">Users with Access</h3>
+              <p className="text-xs text-muted-foreground truncate max-w-[280px]">{accessPanelFolder.name}</p>
+            </div>
+            <button onClick={() => setAccessPanelFolder(null)} className="text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
             </button>
           </div>
 
           <div className="space-y-0">
-            {usersWithAccess.map((mappedUser, idx) => (
-              <div key={idx} className="flex items-center justify-between py-5 border-b border-border last:border-0">
-                <div className="flex items-start gap-3">
-                  <div className="mt-1">
-                    <UserAvatar name={mappedUser.name} color="blue" size="large" />
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-semibold text-foreground">{mappedUser.name}</span>
-                    <span className="text-xs text-muted-foreground">{mappedUser.email}</span>
-                    <div className="mt-2">
-                      <StatusPill status={mappedUser.status} />
+            {loadingPermissions ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Loading permissions...</p>
+              </div>
+            ) : folderPermissions.length > 0 ? (
+              folderPermissions.map((perm, idx) => (
+                <div key={perm.permissionId} className="flex items-center justify-between py-5 border-b border-border last:border-0">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1">
+                      <UserAvatar name={perm.user.name} color="blue" size="large" />
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-semibold text-foreground">{perm.user.name}</span>
+                      <span className="text-xs text-muted-foreground">{perm.user.email}</span>
+                      <div className="mt-2">
+                        <StatusPill status={perm.user.isActive ? "active" : "disabled"} />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground mt-1">
+                        Granted by {perm.grantedBy} on {new Date(perm.grantedAt).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
+                  <button
+                    onClick={() => {
+                      if (!accessPanelFolder) return;
+                      setRevokingUserId(perm.user.id);
+                      revokePermissionMutation.mutate(
+                        { folderId: accessPanelFolder.id, userId: perm.user.id },
+                        {
+                        onSuccess: () => {
+                          const targetUser = folderPermissions.find(p => p.user.id === perm.user.id)?.user;
+                          auditService.addLog({
+                            actor: "Admin",
+                            role: "admin",
+                            action: "Revoked access",
+                            target: targetUser?.name || `User ${perm.user.id}`,
+                            folder: accessPanelFolder.name,
+                            status: "active"
+                          });
+                          toast.success("Permission revoked successfully");
+                          refetchPermissions();
+                        },
+                        onError: () => {
+                          const targetUser = folderPermissions.find(p => p.user.id === perm.user.id)?.user;
+                          auditService.addLog({
+                            actor: "Admin",
+                            role: "admin",
+                            action: "Revoked access",
+                            target: targetUser?.name || `User ${perm.user.id}`,
+                            folder: accessPanelFolder.name,
+                            status: "deactive"
+                          });
+                        },
+                        onSettled: () => setRevokingUserId(null),
+                        }
+                      );
+                    }}
+                    disabled={revokingUserId === perm.user.id}
+                    className="text-muted-foreground hover:text-destructive p-2 rounded-lg transition-colors disabled:opacity-50"
+                    title="Remove access"
+                  >
+                    {revokingUserId === perm.user.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
-                <button className="text-muted-foreground hover:text-destructive p-2 rounded-lg transition-colors" title="Remove access">
-                  <Trash2 className="h-4 w-4" />
-                </button>
+              ))
+            ) : (
+              <div className="text-center py-20">
+                <p className="text-sm text-muted-foreground">No users have direct access to this folder.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       )}
+      <Dialog
+        open={!!grantPermissionFolder}
+        onOpenChange={(open) => {
+          if (!open) {
+            setGrantPermissionFolder(null);
+            setSelectedUserIds([]);
+            setUserSearchQuery("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Grant Permission</DialogTitle>
+            <DialogDescription>
+              Search for users to grant access to{" "}
+              <strong>{grantPermissionFolder?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+                placeholder="Search by name or email..."
+                className="pl-9"
+              />
+            </div>
+            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((u) => (
+                  <div
+                    key={u.id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent transition cursor-pointer group"
+                    onClick={() => {
+                      setSelectedUserIds((prev) =>
+                        prev.includes(u.id)
+                          ? prev.filter((id) => id !== u.id)
+                          : [...prev, u.id],
+                      );
+                    }}
+                  >
+                    <UserAvatar name={u.name} email={u.email} />
+                    <Checkbox
+                      checked={selectedUserIds.includes(u.id)}
+                      onCheckedChange={() => {
+                        // Managed by the parent div click as well, but good for accessibility
+                      }}
+                    />
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-10 text-muted-foreground text-sm">
+                  {userSearchQuery ? "No users found" : "Type to search users"}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={() => setGrantPermissionFolder(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleGrantPermission}
+              disabled={
+                selectedUserIds.length === 0 || grantPermissionMutation.isPending
+              }
+            >
+              {grantPermissionMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              )}
+              Grant Access ({selectedUserIds.length})
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

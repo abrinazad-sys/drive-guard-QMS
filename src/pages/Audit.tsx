@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PageHeader, StatusBadge } from "@/components/shared";
-import { auditLogs } from "@/lib/mock-data";
+import { auditService, type AuditLog } from "@/services/auditService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,17 +11,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 
 export default function Audit() {
+  const [logs, setLogs] = useState<AuditLog[]>([]);
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [detail, setDetail] = useState<typeof auditLogs[0] | null>(null);
+  const [detail, setDetail] = useState<AuditLog | null>(null);
 
-  const filtered = auditLogs.filter(a =>
-    (a.actor.toLowerCase().includes(search.toLowerCase()) || a.target.toLowerCase().includes(search.toLowerCase()) || a.action.toLowerCase().includes(search.toLowerCase())) &&
+  useEffect(() => {
+    setLogs(auditService.getLogs());
+  }, []);
+
+  const filtered = useMemo(() => logs.filter(a =>
+    (a.actor.toLowerCase().includes(search.toLowerCase()) || 
+     a.target.toLowerCase().includes(search.toLowerCase()) || 
+     a.action.toLowerCase().includes(search.toLowerCase()) ||
+     a.folder.toLowerCase().includes(search.toLowerCase())) &&
     (actionFilter === "all" || a.action === actionFilter) &&
     (statusFilter === "all" || a.status === statusFilter)
-  );
-  const actions = Array.from(new Set(auditLogs.map(a => a.action)));
+  ), [logs, search, actionFilter, statusFilter]);
+
+  const actions = useMemo(() => Array.from(new Set(logs.map(a => a.action))), [logs]);
 
   return (
     <div className="space-y-6">
@@ -43,27 +52,28 @@ export default function Audit() {
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="success">Success</SelectItem><SelectItem value="failed">Failed</SelectItem></SelectContent>
+              <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="deactive">Deactive</SelectItem></SelectContent>
             </Select>
           </div>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Time</TableHead><TableHead>Actor</TableHead><TableHead>Action</TableHead><TableHead>Target</TableHead><TableHead>Folder</TableHead><TableHead>IP</TableHead><TableHead>Status</TableHead>
+                <TableHead>Time</TableHead><TableHead>User</TableHead><TableHead>Action</TableHead><TableHead>By</TableHead><TableHead>Folder</TableHead><TableHead>Status</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {filtered.map(a => (
                   <TableRow key={a.id} className="cursor-pointer" onClick={() => setDetail(a)}>
-                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground">{a.time}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                      {new Date(a.time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                    </TableCell>
                     <TableCell className="font-medium whitespace-nowrap">{a.actor}</TableCell>
                     <TableCell className="whitespace-nowrap">{a.action}</TableCell>
                     <TableCell className="whitespace-nowrap">{a.target}</TableCell>
                     <TableCell className="whitespace-nowrap">{a.folder}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{a.ip}</TableCell>
                     <TableCell><StatusBadge status={a.status} /></TableCell>
                   </TableRow>
                 ))}
-                {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">No logs match your filters</TableCell></TableRow>}
+                {filtered.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No logs match your filters</TableCell></TableRow>}
               </TableBody>
             </Table>
           </div>
