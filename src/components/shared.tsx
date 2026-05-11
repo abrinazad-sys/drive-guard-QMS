@@ -77,3 +77,86 @@ export function FileIcon({ type }: { type: string }) {
   const { icon: Icon, color } = map[type] || map.other;
   return <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shrink-0", color)}><Icon className="h-4 w-4" /></div>;
 }
+
+type AvatarColor = "blue" | "orange" | "green" | "grey";
+
+export function UserAvatar({
+  name,
+  email,
+  color = "blue",
+  size = "default",
+}: {
+  name: string;
+  email?: string;
+  color?: AvatarColor;
+  size?: "small" | "default" | "large";
+}) {
+  const initials = name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const colors = {
+    blue: "bg-primary text-primary-foreground",
+    orange: "bg-warning text-warning-foreground",
+    green: "bg-success text-success-foreground",
+    grey: "bg-muted text-muted-foreground",
+  };
+
+  const sizes = {
+    small: "h-6 w-6 text-xs",
+    default: "h-9 w-9 text-sm",
+    large: "h-12 w-12 text-base",
+  };
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className={`${sizes[size]} ${colors[color]} rounded-full flex items-center justify-center font-medium`}>
+        {initials}
+      </div>
+      {email && (
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-foreground">{name}</span>
+          <span className="text-xs text-muted-foreground">{email}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type StatusType = "synced" | "pending" | "failed" | "active" | "disabled" | "admin" | "user";
+
+export function StatusPill({ status }: { status: StatusType }) {
+  const styles = {
+    synced: "bg-success/15 text-success border-success/30",
+    pending: "bg-warning/15 text-warning border-warning/30",
+    failed: "bg-destructive/15 text-destructive border-destructive/30",
+    active: "bg-success/15 text-success border-success/30",
+    disabled: "bg-muted text-muted-foreground border-border",
+    admin: 'bg-primary/15 text-primary border-primary/30',
+    user: 'bg-secondary text-secondary-foreground border-secondary',
+  };
+
+  const labels = {
+    synced: "Synced",
+    pending: "Pending",
+    failed: "Failed",
+    active: "Active",
+    disabled: "Disabled",
+    admin: 'Admin',
+    user: 'User',
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${styles[status]}`}
+    >
+      {status === "pending" && (
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-warning animate-pulse" />
+      )}
+      {labels[status]}
+    </span>
+  );
+}

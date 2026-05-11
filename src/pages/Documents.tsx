@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { PageHeader, StatusBadge, FileIcon } from "@/components/shared";
+import { PageHeader, StatusBadge, FileIcon, UserAvatar, StatusPill } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FolderOpen, Search, Download, Eye, MoreVertical, ChevronRight, Loader2, Check, ArrowLeft } from "lucide-react";
+import { FolderOpen, Search, Download, Eye, MoreVertical, ChevronRight, Loader2, Check, ArrowLeft, Trash2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
@@ -11,8 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useFolders, useFolderContents, downloadFile } from "@/services/fileService";
 import type { FileDto, FolderDto } from "@/dto/FolderDto";
 
+const usersWithAccess = [
+  { name: "Sara Johnson", email: "sara.j@company.com", status: "synced" as const },
+  { name: "Michael Chen", email: "m.chen@company.com", status: "synced" as const },
+  { name: "Emma Wilson", email: "e.wilson@company.com", status: "pending" as const },
+  { name: "David Lee", email: "d.lee@company.com", status: "synced" as const },
+];
+
 export default function Documents() {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [previewFile, setPreviewFile] = useState<FileDto | null>(null);
@@ -48,7 +56,8 @@ export default function Documents() {
   const isLoading = loadingRoot || (currentFolderId && loadingContents);
 
   return (
-    <div className="space-y-6">
+    <div className="relative h-full">
+      <div className={`space-y-6 transition-opacity duration-200 ${isPanelOpen ? "opacity-40" : "opacity-100"}`}>
       <PageHeader title="Documents" description="Browse folders and files synced from Google Drive." />
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -80,6 +89,15 @@ export default function Documents() {
           </Select>
         )}
         {currentFolderId && <Button variant="outline" onClick={() => setCurrentFolderId(null)}><ArrowLeft className="h-4 w-4 mr-2" />Back</Button>}
+        {currentFolderId && (
+          <Button
+            variant="outline"
+            onClick={() => setIsPanelOpen(true)}
+            className="rounded-xl border-border hover:bg-accent hover:text-accent-foreground"
+          >
+            Manage User
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -170,6 +188,40 @@ export default function Documents() {
           )}
         </SheetContent>
       </Sheet>
+      </div>
+
+      {isPanelOpen && (
+        <div className="fixed top-0 right-0 w-[380px] h-full bg-background border-l border-border p-6 shadow-xl z-50 overflow-y-auto">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-semibold text-foreground">Users with Access</h3>
+            <button onClick={() => setIsPanelOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="space-y-0">
+            {usersWithAccess.map((mappedUser, idx) => (
+              <div key={idx} className="flex items-center justify-between py-5 border-b border-border last:border-0">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">
+                    <UserAvatar name={mappedUser.name} color="blue" size="large" />
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-semibold text-foreground">{mappedUser.name}</span>
+                    <span className="text-xs text-muted-foreground">{mappedUser.email}</span>
+                    <div className="mt-2">
+                      <StatusPill status={mappedUser.status} />
+                    </div>
+                  </div>
+                </div>
+                <button className="text-muted-foreground hover:text-destructive p-2 rounded-lg transition-colors" title="Remove access">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
