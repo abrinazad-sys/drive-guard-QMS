@@ -9,6 +9,7 @@ import { Search, Download, FileText } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { exportToPdf } from "@/utils/exportPdf";
 
 export default function Audit() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -36,8 +37,39 @@ export default function Audit() {
     <div className="space-y-6">
       <PageHeader title="Audit Logs" description="Detailed history of every action across QMS." actions={
         <>
-          <Button variant="outline" onClick={() => toast.success("Audit logs exported as CSV")}><Download className="h-4 w-4 mr-2" />Export CSV</Button>
-          <Button variant="outline" onClick={() => toast.success("Audit logs exported as PDF")}><FileText className="h-4 w-4 mr-2" />Export PDF</Button>
+          <Button variant="outline" onClick={() => {
+            if (filtered.length === 0) { toast.error("No logs to export"); return; }
+            const header = "Time,User,Action,Target,Folder,Status";
+            const csvRows = filtered.map(a =>
+              [new Date(a.time).toLocaleString(), a.actor, a.action, a.target, a.folder, a.status].map(v => `"${v}"`).join(",")
+            );
+            const blob = new Blob([header + "\n" + csvRows.join("\n")], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `audit_logs_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+            toast.success("Audit logs exported as CSV");
+          }}><Download className="h-4 w-4 mr-2" />Export CSV</Button>
+          <Button variant="outline" onClick={() => {
+            if (filtered.length === 0) { toast.error("No logs to export"); return; }
+            exportToPdf({
+              title: "Audit Logs",
+              subtitle: `${filtered.length} entries \u00b7 Generated ${new Date().toLocaleString()}`,
+              columns: ["Time", "User", "Action", "Target", "Folder", "Status"],
+              rows: filtered.map(a => [
+                new Date(a.time).toLocaleString([], { dateStyle: "short", timeStyle: "short" }),
+                a.actor,
+                a.action,
+                a.target,
+                a.folder,
+                a.status.charAt(0).toUpperCase() + a.status.slice(1),
+              ]),
+              filename: `audit_logs_${new Date().toISOString().slice(0, 10)}.pdf`,
+            });
+            toast.success("Audit logs exported as PDF");
+          }}><FileText className="h-4 w-4 mr-2" />Export PDF</Button>
         </>
       } />
       <Card>

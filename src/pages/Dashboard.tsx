@@ -163,7 +163,7 @@ function EmployeeDashboard() {
             logs.map(l => (
               <div key={l.id} className="flex items-center justify-between text-sm border-b border-border last:border-0 pb-3 last:pb-0">
                 <div className="flex items-center gap-3">
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${l.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${l.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                     {l.action.includes('Grant') ? <Check className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
                   </div>
                   <div>

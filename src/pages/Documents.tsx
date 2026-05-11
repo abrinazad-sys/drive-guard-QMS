@@ -4,7 +4,7 @@ import { PageHeader, StatusBadge, FileIcon, UserAvatar, StatusPill } from "@/com
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FolderOpen, Search, Download, Eye, MoreVertical, ChevronRight, Loader2, Check, ArrowLeft, Trash2, X } from "lucide-react";
+import { FolderOpen, Search, Download, Eye, MoreVertical, ChevronRight, Loader2, Check, ArrowLeft, Trash2, X, Cloud } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
@@ -244,21 +244,87 @@ export default function Documents() {
       )}
 
       <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>{previewFile?.name}</DialogTitle>
-            <DialogDescription>Document Preview</DialogDescription>
-          </DialogHeader>
-          <div className="aspect-video bg-muted rounded-lg flex items-center justify-center border border-border">
-            <div className="text-center">
-              <FileIcon type={previewFile?.extension || "other"} />
-              <div className="text-sm text-muted-foreground mt-3 font-medium">Preview available in Google Drive</div>
-              <Button variant="link" className="mt-2" onClick={() => previewFile && window.open(previewFile.webViewLink, "_blank")}>Open in Drive</Button>
+        <DialogContent className="max-w-4xl w-full h-[85vh] flex flex-col p-6 overflow-hidden">
+          <DialogHeader className="mb-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <DialogTitle className="text-xl">{previewFile?.name}</DialogTitle>
+                <DialogDescription>Document Preview</DialogDescription>
+              </div>
             </div>
+          </DialogHeader>
+          
+          <div className="flex-1 bg-slate-50 dark:bg-slate-900 rounded-xl border border-border overflow-hidden relative flex items-center justify-center">
+            {previewFile && (() => {
+              // Convert Drive webViewLink to embed-compatible URL
+              // webViewLink: https://drive.google.com/file/d/FILE_ID/view?usp=...
+              // embed URL:   https://drive.google.com/file/d/FILE_ID/preview
+              const embedUrl = previewFile.webViewLink
+                .replace(/\/view(\?.*)?$/, "/preview")
+                .replace(/\/edit(\?.*)?$/, "/preview");
+
+              const previewable = ["pdf", "docx", "doc", "xlsx", "xls", "pptx", "ppt",
+                "png", "jpg", "jpeg", "webp", "gif", "txt", "csv"].includes(
+                  previewFile.extension.toLowerCase()
+                );
+
+              return previewable ? (
+                <iframe
+                  key={previewFile.id}
+                  src={embedUrl}
+                  className="w-full h-full border-0"
+                  title={previewFile.name}
+                  allow="autoplay"
+                />
+              ) : (
+                <div className="text-center p-12">
+                  <div className="h-20 w-20 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <FileIcon type={previewFile.extension} />
+                  </div>
+                  <h3 className="text-lg font-medium mb-1">No preview available</h3>
+                  <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
+                    This file type ({previewFile.extension.toUpperCase()}) cannot be previewed directly.
+                  </p>
+                  <Button variant="outline" onClick={() => window.open(previewFile.webViewLink, "_blank")}>
+                    Open in Google Drive
+                  </Button>
+                </div>
+              );
+            })()}
           </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setPreviewFile(null)}>Close</Button>
-            <Button onClick={() => previewFile && handleDownload(previewFile.id, previewFile.name)}><Download className="h-4 w-4 mr-2" />Download</Button>
+          
+          <div className="flex flex-wrap items-center justify-end gap-2 mt-6 pt-4 border-t border-border shrink-0">
+            <Button variant="ghost" onClick={() => setPreviewFile(null)} className="rounded-xl">
+              Close
+            </Button>
+            
+            {previewFile && (
+              <>
+                <Button 
+                  variant="outline" 
+                  className="rounded-xl border-border bg-background hover:bg-accent"
+                  onClick={() => window.open(previewFile.webViewLink, "_blank")}
+                >
+                  <Cloud className="h-4 w-4 mr-2 text-primary" />
+                  Open in Drive
+                </Button>
+                
+                <Button 
+                  className="rounded-xl px-6"
+                  onClick={() => handleDownload(previewFile.id, previewFile.name)} 
+                  disabled={downloading === previewFile.id}
+                >
+                  {downloading === previewFile.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : downloaded === previewFile.id ? (
+                    <Check className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  {downloaded === previewFile.id ? "Downloaded" : "Download"}
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -276,7 +342,21 @@ export default function Documents() {
               </dl>
               <div className="flex gap-2 pt-4">
                 <Button className="flex-1" onClick={() => { setPreviewFile(detailFile); setDetailFile(null); }}><Eye className="h-4 w-4 mr-2" />Preview</Button>
-                <Button className="flex-1" variant="outline" onClick={() => handleDownload(detailFile.id, detailFile.name)}><Download className="h-4 w-4 mr-2" />Download</Button>
+                <Button 
+                  className="flex-1" 
+                  variant="outline" 
+                  onClick={() => handleDownload(detailFile.id, detailFile.name)}
+                  disabled={downloading === detailFile.id}
+                >
+                  {downloading === detailFile.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : downloaded === detailFile.id ? (
+                    <Check className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  {downloaded === detailFile.id ? "Downloaded" : "Download"}
+                </Button>
               </div>
             </div>
           )}

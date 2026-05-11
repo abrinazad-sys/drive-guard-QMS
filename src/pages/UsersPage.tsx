@@ -58,6 +58,7 @@ import {
 } from "@/services/userService";
 import { getApiErrorMessage } from "@/services/authService";
 import { cn } from "@/lib/utils";
+import { exportToPdf } from "@/utils/exportPdf";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -255,7 +256,26 @@ export default function Users() {
           <>
             <Button
               variant="outline"
-              onClick={() => toast.success("User list exported")}
+              onClick={() => {
+                if (filtered.length === 0) {
+                  toast.error("No users to export");
+                  return;
+                }
+                exportToPdf({
+                  title: "User List",
+                  subtitle: `${filtered.length} users · Generated ${new Date().toLocaleString()}`,
+                  columns: ["Name", "Email", "Role", "Created", "Status"],
+                  rows: filtered.map(u => [
+                    u.name,
+                    u.email,
+                    u.role.charAt(0).toUpperCase() + u.role.slice(1),
+                    new Date(u.createdAt).toLocaleDateString(),
+                    u.isActive ? "Active" : "Inactive",
+                  ]),
+                  filename: `users_${new Date().toISOString().slice(0, 10)}.pdf`,
+                });
+                toast.success("User list exported as PDF");
+              }}
             >
               <Download className="h-4 w-4 mr-2" />
               Export
