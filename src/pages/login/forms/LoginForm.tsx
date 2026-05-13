@@ -56,7 +56,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                   <Input 
                     placeholder="Email" 
                     {...field} 
-                    className="h-12 bg-white border-[#D1D5DB] rounded-lg text-[13px] font-medium text-[#1A1A1A] placeholder:text-[#9CA3AF] placeholder:font-normal transition-all hover:bg-[#EFF6FF] hover:border-[#EA4335] focus:bg-[#EFF6FF] focus:border-[#EA4335] focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none outline-none"
+                    className="h-12 bg-white border-[#D1D5DB] rounded-2xl text-[13px] font-medium text-[#1A1A1A] placeholder:text-[#9CA3AF] placeholder:font-normal transition-all hover:bg-primary/5 hover:border-primary focus:bg-primary/5 focus:border-primary focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none outline-none"
                   />
                 </FormControl>
                 <FormMessage className="text-xs text-left px-1" />
@@ -76,7 +76,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                       type={showPassword ? "text" : "password"}
                       placeholder="Password"
                       {...field}
-                      className="h-12 bg-white border-[#D1D5DB] rounded-lg text-[13px] font-medium text-[#1A1A1A] placeholder:text-[#9CA3AF] placeholder:font-normal transition-all hover:bg-[#EFF6FF] hover:border-[#EA4335] focus:bg-[#EFF6FF] focus:border-[#EA4335] focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none outline-none pr-10"
+                      className="h-12 bg-white border-[#D1D5DB] rounded-2xl text-[13px] font-medium text-[#1A1A1A] placeholder:text-[#9CA3AF] placeholder:font-normal transition-all hover:bg-primary/5 hover:border-primary focus:bg-primary/5 focus:border-primary focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none outline-none pr-10"
                     />
                   </FormControl>
                   <button
@@ -92,11 +92,11 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
             )}
           />
           
-          <div className="flex justify-end pt-1">
+          {/* <div className="flex justify-end pt-1">
             <button type="button" className="text-[12px] font-semibold text-[#EA4335] hover:underline">
               Forgot password ?
             </button>
-          </div>
+          </div> */}
 
           <div className="flex items-center my-6 py-2">
             <div className="flex-1 border-t border-[#E5E7EB]"></div>
@@ -107,7 +107,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           <Button
             type="button"
             variant="outline"
-            className="w-full h-12 bg-white border-[#E5E7EB] text-[#374151] rounded-lg text-[13px] font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-5"
+            className="w-full h-12 bg-white border-[#E5E7EB] text-[#374151] rounded-2xl text-[13px] font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-5"
           >
             Login with Google
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -121,7 +121,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full h-12 bg-[#EA4335] text-white rounded-full text-[14px] font-semibold hover:bg-[#EA4335]/80 transition-colors disabled:opacity-50 mt-4"
+            className="w-full h-12 bg-primary text-white rounded-2xl text-[14px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 mt-4"
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Login"}
           </Button>

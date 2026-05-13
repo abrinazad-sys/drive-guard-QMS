@@ -29,7 +29,7 @@ export default function Login() {
         {/* Right Side (Form) - Sits in the background of the card */}
         <div className="absolute top-0 right-0 bottom-0 w-[55%] flex flex-col px-8 py-8 sm:px-12 lg:px-24 z-0">
           <div className="flex-1 flex flex-col justify-center max-w-[380px] w-full mx-auto">
-            <div className="text-center mb-12 flex flex-col items-center">
+            <div className="text-center -mt-12 mb-12 flex flex-col items-center">
               <img
                 src="/images/bedata.png"
                 alt="BeData Logo"
@@ -46,10 +46,10 @@ export default function Login() {
 
         {/* Left Side (Dark Image) - Positioned absolute to allow slanted overlap */}
         <div
-          className="absolute top-3.5 bottom-3.5 left-3.5 z-10 hidden md:flex overflow-hidden rounded-[32px] flex flex-col text-white shadow-2xl"
+          className="absolute top-5 bottom-5 left-5 z-10 hidden md:flex overflow-hidden rounded-[32px] flex flex-col text-white shadow-[-20px_0_20px_-20px_rgba(0,0,0,0.3)]"
           style={{
             width: "56%",
-            clipPath: "polygon(0 0, 80% 0, 95% 100%, 0 100%)",
+            clipPath: "polygon(-10% -10%, 80% -10%, 95% 110%, -10% 110%)",
           }}
         >
           {/* Background Image */}
