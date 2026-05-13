@@ -16,15 +16,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sun, Moon, Monitor, Check, RotateCcw } from "lucide-react";
+import { Sun, Moon, Monitor, Check, RotateCcw, Loader2, Clock, Shield, Globe, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ProfileForm } from "./forms/ProfileForm";
 import { ChangePasswordForm } from "./forms/ChangePasswordForm";
+import { useAuditLogs } from "@/services/auditService";
 
 export function ProfilePage() {
   const { user } = useAuth();
   const { mode, accent, setMode, setAccent, reset } = useTheme();
+  
+  const { data: auditData, isLoading: loadingLogs } = useAuditLogs({ 
+    search: user?.name,
+    limit: 10 
+  });
+  const logs = auditData?.logs || [];
 
   return (
     <div className="space-y-6">
@@ -157,22 +164,58 @@ export function ProfilePage() {
         <TabsContent value="activity" className="mt-4">
           <Card className="rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.08)] border-none max-w-full">
             <CardHeader className="px-10 pt-10 pb-4">
-              <CardTitle>Recent Activity</CardTitle>
+              <CardTitle>Security Activity</CardTitle>
+              <CardDescription>Recent login and action history for your account</CardDescription>
             </CardHeader>
-            <CardContent className="px-10 pb-10 space-y-2 text-sm">
-              {[
-                "Logged in from Chrome on macOS — Today, 09:12",
-                "Downloaded user Handbook.pdf — Today, 09:50",
-                "Previewed Quality Manual v3.docx — Yesterday, 14:20",
-                "Updated profile — 3 days ago",
-              ].map((t, i) => (
-                <div
-                  key={i}
-                  className="p-3 rounded-lg bg-muted text-muted-foreground"
-                >
-                  {t}
+            <CardContent className="px-10 pb-10 space-y-4">
+              {loadingLogs ? (
+                <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+              ) : logs.length > 0 ? (
+                <div className="space-y-4">
+                  {logs.map((l) => (
+                    <div
+                      key={l.id}
+                      className="p-4 rounded-2xl bg-muted/50 border border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:bg-muted"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <Shield className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-foreground">{l.action.replace(/_/g, ' ')}</div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(l.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <Globe className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">IP:</span>
+                          <span className="font-mono font-medium">{l.ipAddress}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Terminal className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">Browser:</span>
+                          <span className="font-medium">{l.userBrowser}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Monitor className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">OS:</span>
+                          <span className="font-medium">{l.userOS}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Clock className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                  <p>No recent activity found for your account.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -180,3 +223,4 @@ export function ProfilePage() {
     </div>
   );
 }
+

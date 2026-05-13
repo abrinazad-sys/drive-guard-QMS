@@ -81,7 +81,7 @@ export default function AppLayout() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button
+                {/* <Button
                   variant="ghost"
                   size="icon"
                   className="relative"
@@ -94,7 +94,7 @@ export default function AppLayout() {
                       {unread}
                     </span>
                   )}
-                </Button>
+                </Button> */}
                 <DropdownMenu>
                   {/* <DropdownMenuTrigger asChild> */}
                   {/* <button className="flex items-center gap-2 ml-1 rounded-full hover:bg-accent p-1 pr-3 transition"> */}

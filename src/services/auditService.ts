@@ -1,73 +1,37 @@
-export interface AuditLog {
-  id: string;
-  time: string; // ISO string
-  actor: string;
-  role: string;
-  action: string;
-  target: string;
-  folder: string;
-  status: "active" | "deactive";
-  ip: string;
-  error?: string;
-}
+import createAxiosInstance from "@/config/axios-config";
+import { useQuery } from "@tanstack/react-query";
+import type { AuditLogsResponse, AuditLogsParams, AuditLog } from "@/dto/AuditDto";
 
-const STORAGE_KEY = "qms_audit_logs";
-const MAX_DAYS = 7;
+const axios = createAxiosInstance(import.meta.env.VITE_BASE_URL ?? "");
 
-class AuditService {
-  private logs: AuditLog[] = [];
+export type { AuditLog };
 
-  constructor() {
-    this.loadLogs();
-  }
+export function useAuditLogs(params: AuditLogsParams = {}) {
+  const queryParams = new URLSearchParams();
+  if (params.cursor) queryParams.append("cursor", params.cursor.toString());
+  if (params.limit) queryParams.append("limit", params.limit.toString());
+  if (params.targetType && params.targetType !== "all") queryParams.append("targetType", params.targetType);
+  if (params.search) queryParams.append("search", params.search);
 
-  private loadLogs() {
-    const stored = sessionStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        this.logs = JSON.parse(stored);
-      } catch (e) {
-        this.logs = [];
+  return useQuery({
+    queryKey: ["audit-logs", JSON.stringify(params)],
+    queryFn: async () => {
+      const { data } = await axios.get<AuditLogsResponse>(`/admin/system/audit-logs?${queryParams.toString()}`);
+      if (!data.success) {
+        throw new Error("Failed to fetch audit logs");
       }
-    } else {
-      this.logs = [];
-    }
-    this.cleanup();
-  }
-
-  private saveLogs() {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.logs));
-  }
-
-  private cleanup() {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - MAX_DAYS);
-    
-    const initialCount = this.logs.length;
-    this.logs = this.logs.filter(log => new Date(log.time) > cutoff);
-    
-    if (this.logs.length !== initialCount) {
-      this.saveLogs();
-    }
-  }
-
-  getLogs(): AuditLog[] {
-    this.cleanup();
-    return [...this.logs].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-  }
-
-  addLog(logData: Omit<AuditLog, "id" | "time" | "ip">) {
-    const newLog: AuditLog = {
-      ...logData,
-      id: `a${Date.now()}`,
-      time: new Date().toISOString(),
-      ip: "127.0.0.1", // In a real app, this would come from the server response or headers
-    };
-
-    this.logs.unshift(newLog);
-    this.cleanup();
-    this.saveLogs();
-  }
+      return data.data;
+    },
+  });
 }
 
-export const auditService = new AuditService();
+// Legacy support if needed, but we should migrate to hooks
+export const auditService = {
+  getLogs: async () => {
+    const { data } = await axios.get<AuditLogsResponse>("/admin/system/audit-logs");
+    return data.data.logs;
+  },
+  addLog: (logData: any) => {
+    console.log("Legacy addLog called (no-op with real API):", logData);
+  }
+};

@@ -1,47 +1,72 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { PageHeader, StatusBadge } from "@/components/shared";
-import { auditService, type AuditLog } from "@/services/auditService";
+import { useAuditLogs, type AuditLog } from "@/services/auditService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Download, FileText } from "lucide-react";
+import { Search, Download, FileText, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { exportToPdf } from "@/utils/exportPdf";
 
 export default function Audit() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
   const [search, setSearch] = useState("");
-  const [actionFilter, setActionFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [targetTypeFilter, setTargetTypeFilter] = useState("all");
+  const [cursor, setCursor] = useState<number | undefined>(undefined);
+  const [cursorHistory, setCursorHistory] = useState<(number | undefined)[]>([]);
   const [detail, setDetail] = useState<AuditLog | null>(null);
 
-  useEffect(() => {
-    setLogs(auditService.getLogs());
-  }, []);
+  const { data, isLoading, isError } = useAuditLogs({
+    search: search || undefined,
+    targetType: targetTypeFilter,
+    cursor,
+    limit: 15,
+  });
 
-  const filtered = useMemo(() => logs.filter(a =>
-    (a.actor.toLowerCase().includes(search.toLowerCase()) || 
-     a.target.toLowerCase().includes(search.toLowerCase()) || 
-     a.action.toLowerCase().includes(search.toLowerCase()) ||
-     a.folder.toLowerCase().includes(search.toLowerCase())) &&
-    (actionFilter === "all" || a.action === actionFilter) &&
-    (statusFilter === "all" || a.status === statusFilter)
-  ), [logs, search, actionFilter, statusFilter]);
+  const logs = data?.logs || [];
+  const nextCursor = data?.nextCursor;
 
-  const actions = useMemo(() => Array.from(new Set(logs.map(a => a.action))), [logs]);
+  const handleNextPage = () => {
+    if (nextCursor) {
+      setCursorHistory([...cursorHistory, cursor]);
+      setCursor(nextCursor);
+    }
+  };
+
+  const handlePrevPage = () => {
+    const prevHistory = [...cursorHistory];
+    const prevCursor = prevHistory.pop();
+    setCursor(prevCursor);
+    setCursorHistory(prevHistory);
+  };
+
+  const handleSearch = (val: string) => {
+    setSearch(val);
+    setCursor(undefined);
+    setCursorHistory([]);
+  };
+
+  const handleFilterChange = (val: string) => {
+    setTargetTypeFilter(val);
+    setCursor(undefined);
+    setCursorHistory([]);
+  };
+
+  // Unique target types for the filter dropdown
+  // Ideally this would come from another API or be a fixed list
+  const targetTypes = ["User", "FolderPermission", "Folder", "File"];
 
   return (
     <div className="space-y-6">
       <PageHeader title="Audit Logs" description="Detailed history of every action across QMS." actions={
         <>
           <Button variant="outline" onClick={() => {
-            if (filtered.length === 0) { toast.error("No logs to export"); return; }
-            const header = "Time,User,Action,Target,Folder,Status";
-            const csvRows = filtered.map(a =>
-              [new Date(a.time).toLocaleString(), a.actor, a.action, a.target, a.folder, a.status].map(v => `"${v}"`).join(",")
+            if (logs.length === 0) { toast.error("No logs to export"); return; }
+            const header = "Time,Admin,Action,Target,Folder,IP";
+            const csvRows = logs.map(a =>
+              [new Date(a.createdAt).toLocaleString(), a.adminName, a.action, a.targetName, a.folderName || "", a.ipAddress].map(v => `"${v}"`).join(",")
             );
             const blob = new Blob([header + "\n" + csvRows.join("\n")], { type: "text/csv" });
             const url = URL.createObjectURL(blob);
@@ -53,18 +78,17 @@ export default function Audit() {
             toast.success("Audit logs exported as CSV");
           }}><Download className="h-4 w-4 mr-2" />Export CSV</Button>
           <Button variant="outline" onClick={() => {
-            if (filtered.length === 0) { toast.error("No logs to export"); return; }
+            if (logs.length === 0) { toast.error("No logs to export"); return; }
             exportToPdf({
               title: "Audit Logs",
-              subtitle: `${filtered.length} entries \u00b7 Generated ${new Date().toLocaleString()}`,
-              columns: ["Time", "User", "Action", "Target", "Folder", "Status"],
-              rows: filtered.map(a => [
-                new Date(a.time).toLocaleString([], { dateStyle: "short", timeStyle: "short" }),
-                a.actor,
+              subtitle: `${logs.length} entries \u00b7 Generated ${new Date().toLocaleString()}`,
+              columns: ["Time", "Admin", "Action", "Target", "Folder"],
+              rows: logs.map(a => [
+                new Date(a.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" }),
+                a.adminName,
                 a.action,
-                a.target,
-                a.folder,
-                a.status.charAt(0).toUpperCase() + a.status.slice(1),
+                a.targetName,
+                a.folderName || "-",
               ]),
               filename: `audit_logs_${new Date().toISOString().slice(0, 10)}.pdf`,
             });
@@ -76,39 +100,86 @@ export default function Audit() {
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
             <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search logs..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+              <Input 
+                placeholder="Search logs by admin or target..." 
+                value={search} 
+                onChange={(e) => handleSearch(e.target.value)} 
+                className="pl-9" 
+              />
             </div>
-            <Select value={actionFilter} onValueChange={setActionFilter}>
-              <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Action" /></SelectTrigger>
-              <SelectContent><SelectItem value="all">All actions</SelectItem>{actions.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="deactive">Deactive</SelectItem></SelectContent>
+            <Select value={targetTypeFilter} onValueChange={handleFilterChange}>
+              <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Target Type" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                {targetTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
             </Select>
           </div>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Time</TableHead><TableHead>User</TableHead><TableHead>Action</TableHead><TableHead>By</TableHead><TableHead>Folder</TableHead><TableHead>Status</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {filtered.map(a => (
-                  <TableRow key={a.id} className="cursor-pointer" onClick={() => setDetail(a)}>
-                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
-                      {new Date(a.time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                    </TableCell>
-                    <TableCell className="font-medium whitespace-nowrap">{a.actor}</TableCell>
-                    <TableCell className="whitespace-nowrap">{a.action}</TableCell>
-                    <TableCell className="whitespace-nowrap">{a.target}</TableCell>
-                    <TableCell className="whitespace-nowrap">{a.folder}</TableCell>
-                    <TableCell><StatusBadge status={a.status} /></TableCell>
-                  </TableRow>
-                ))}
-                {filtered.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No logs match your filters</TableCell></TableRow>}
-              </TableBody>
-            </Table>
-          </div>
+
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin mb-2" />
+              <p>Loading audit logs...</p>
+            </div>
+          ) : isError ? (
+            <div className="text-center py-12 text-destructive">
+              Failed to load audit logs. Please try again.
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Admin</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Target</TableHead>
+                    <TableHead>Folder</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {logs.map(a => (
+                      <TableRow key={a.id} className="cursor-pointer" onClick={() => setDetail(a)}>
+                        <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                          {new Date(a.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                        </TableCell>
+                        <TableCell className="font-medium whitespace-nowrap">{a.adminName}</TableCell>
+                        <TableCell className="whitespace-nowrap">{a.action}</TableCell>
+                        <TableCell className="whitespace-nowrap">{a.targetName}</TableCell>
+                        <TableCell className="whitespace-nowrap">{a.folderName || "-"}</TableCell>
+                        <TableCell><StatusBadge status="active" /></TableCell>
+                      </TableRow>
+                    ))}
+                    {logs.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No logs match your filters</TableCell></TableRow>}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex items-center justify-between mt-4">
+                <p className="text-sm text-muted-foreground">
+                  Showing {logs.length} entries
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handlePrevPage} 
+                    disabled={cursorHistory.length === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleNextPage} 
+                    disabled={!nextCursor}
+                  >
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -117,15 +188,16 @@ export default function Audit() {
           <SheetHeader><SheetTitle>Audit Detail</SheetTitle></SheetHeader>
           {detail && (
             <dl className="space-y-2 text-sm mt-6">
-              <Row k="Timestamp" v={detail.time} />
-              <Row k="Actor" v={detail.actor} />
-              <Row k="Role" v={detail.role} />
+              <Row k="Timestamp" v={new Date(detail.createdAt).toLocaleString()} />
+              <Row k="Admin" v={detail.adminName} />
               <Row k="Action" v={detail.action} />
-              <Row k="Target" v={detail.target} />
-              <Row k="Folder/File" v={detail.folder} />
-              <Row k="IP Address" v={detail.ip} />
-              <Row k="Status" v={<StatusBadge status={detail.status} />} />
-              {detail.error && <Row k="Error" v={detail.error} />}
+              <Row k="Target Type" v={detail.targetType} />
+              <Row k="Target Name" v={detail.targetName} />
+              <Row k="Folder" v={detail.folderName || "-"} />
+              <Row k="IP Address" v={detail.ipAddress} />
+              <Row k="Browser" v={detail.userBrowser} />
+              <Row k="OS" v={detail.userOS} />
+              <Row k="Status" v={<StatusBadge status="active" />} />
             </dl>
           )}
         </SheetContent>
@@ -133,6 +205,8 @@ export default function Audit() {
     </div>
   );
 }
+
 function Row({ k, v }: { k: string; v: React.ReactNode }) {
   return <div className="flex justify-between gap-4 border-b border-border pb-2"><dt className="text-muted-foreground">{k}</dt><dd className="font-medium text-right">{v}</dd></div>;
 }
+

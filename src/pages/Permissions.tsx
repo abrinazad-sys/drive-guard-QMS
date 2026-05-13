@@ -219,7 +219,7 @@ export default function Permissions() {
         <TabsList>
           <TabsTrigger value="direct">Direct Access</TabsTrigger>
           <TabsTrigger value="user-access">User Access</TabsTrigger>
-          <TabsTrigger value="groups">Groups</TabsTrigger>
+          {/* <TabsTrigger value="groups">Groups</TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="direct" className="space-y-6">
@@ -637,7 +637,7 @@ export default function Permissions() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="groups" className="space-y-3">
+        {/* <TabsContent value="groups" className="space-y-3">
           {groups.map((g) => (
             <Card key={g.id} className="p-4">
               <div className="flex items-center justify-between gap-3">
@@ -663,10 +663,10 @@ export default function Permissions() {
               </div>
             </Card>
           ))}
-        </TabsContent>
+        </TabsContent> */}
       </Tabs>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border p-3 z-40">
+      <div className="relative bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border p-3 z-40">
         <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4">
           <div className="text-sm text-muted-foreground">
             <strong>{selectedUsers.length}</strong> users ·{" "}

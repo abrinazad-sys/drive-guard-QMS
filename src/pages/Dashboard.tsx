@@ -3,12 +3,11 @@ import { MetricCard, PageHeader, StatusBadge } from "@/components/shared";
 import { Users, FolderOpen, AlertTriangle, Download, Cloud, RefreshCw, ChevronRight, Clock, Loader2, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { auditService, type AuditLog } from "@/services/auditService";
+import { useAuditLogs } from "@/services/auditService";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
 import { useFolders } from "@/services/fileService";
 import { useAdminUsers } from "@/services/userService";
-import { useState, useEffect } from "react";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -19,11 +18,9 @@ function AdminDashboard() {
   const nav = useNavigate();
   const { data: rootFolders = [], isLoading: loadingFolders, refetch: refetchFolders } = useFolders();
   const { data: users = [], isLoading: loadingUsers } = useAdminUsers();
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-
-  useEffect(() => {
-    setLogs(auditService.getLogs().slice(0, 6));
-  }, []);
+  
+  const { data: auditData, isLoading: loadingLogs } = useAuditLogs({ limit: 6 });
+  const logs = auditData?.logs || [];
 
   return (
     <div className="space-y-6">
@@ -44,31 +41,35 @@ function AdminDashboard() {
             <Button variant="ghost" size="sm" onClick={() => nav("/audit")}>View all <ChevronRight className="h-4 w-4 ml-1" /></Button>
           </CardHeader>
           <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Time</TableHead><TableHead>Actor</TableHead><TableHead>Action</TableHead><TableHead>Target</TableHead><TableHead>Folder</TableHead><TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.length > 0 ? logs.map(a => (
-                  <TableRow key={a.id}>
-                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
-                      {new Date(a.time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                    </TableCell>
-                    <TableCell className="font-medium whitespace-nowrap">{a.actor}</TableCell>
-                    <TableCell className="whitespace-nowrap">{a.action}</TableCell>
-                    <TableCell className="whitespace-nowrap">{a.target}</TableCell>
-                    <TableCell className="whitespace-nowrap">{a.folder}</TableCell>
-                    <TableCell><StatusBadge status={a.status} /></TableCell>
-                  </TableRow>
-                )) : (
+            {loadingLogs ? (
+              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No recent activity found.</TableCell>
+                    <TableHead>Time</TableHead><TableHead>Actor</TableHead><TableHead>Action</TableHead><TableHead>Target</TableHead><TableHead>Folder</TableHead><TableHead>Status</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {logs.length > 0 ? logs.map(a => (
+                    <TableRow key={a.id}>
+                      <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                        {new Date(a.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                      </TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">{a.adminName}</TableCell>
+                      <TableCell className="whitespace-nowrap">{a.action}</TableCell>
+                      <TableCell className="whitespace-nowrap">{a.targetName}</TableCell>
+                      <TableCell className="whitespace-nowrap">{a.folderName || "-"}</TableCell>
+                      <TableCell><StatusBadge status="active" /></TableCell>
+                    </TableRow>
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No recent activity found.</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
         <div className="space-y-6">
@@ -111,17 +112,12 @@ function EmployeeDashboard() {
   const { user } = useAuth();
   const nav = useNavigate();
   const { data: rootFolders = [], isLoading: loadingFolders } = useFolders();
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-
-  useEffect(() => {
-    if (user) {
-      const allLogs = auditService.getLogs();
-      const userRelevantLogs = allLogs.filter(l => 
-        l.actor === user.name || l.target === user.name
-      ).slice(0, 5);
-      setLogs(userRelevantLogs);
-    }
-  }, [user]);
+  
+  const { data: auditData, isLoading: loadingLogs } = useAuditLogs({ 
+    search: user?.name,
+    limit: 5 
+  });
+  const logs = auditData?.logs || [];
   
   return (
     <div className="space-y-6">
@@ -159,21 +155,23 @@ function EmployeeDashboard() {
       <Card>
         <CardHeader><CardTitle>Recent Activity</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          {logs.length > 0 ? (
+          {loadingLogs ? (
+            <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : logs.length > 0 ? (
             logs.map(l => (
               <div key={l.id} className="flex items-center justify-between text-sm border-b border-border last:border-0 pb-3 last:pb-0">
                 <div className="flex items-center gap-3">
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${l.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {l.action.includes('Grant') ? <Check className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                  <div className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-100 text-blue-700">
+                    {l.action.includes('GRANT') ? <Check className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
                   </div>
                   <div>
                     <div className="font-medium">{l.action}</div>
-                    <div className="text-xs text-muted-foreground">{l.folder}</div>
+                    <div className="text-xs text-muted-foreground">{l.folderName || l.targetName}</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-muted-foreground">{new Date(l.time).toLocaleDateString()}</div>
-                  <StatusBadge status={l.status} />
+                  <div className="text-xs text-muted-foreground">{new Date(l.createdAt).toLocaleDateString()}</div>
+                  <StatusBadge status="active" />
                 </div>
               </div>
             ))
@@ -185,3 +183,4 @@ function EmployeeDashboard() {
     </div>
   );
 }
+

@@ -16,9 +16,9 @@ export default function SystemSettings() {
           <TabsTrigger value="company">Company</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="sync">Sync</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="audit">Audit</TabsTrigger>
+          {/* <TabsTrigger value="sync">Sync</TabsTrigger> */}
+          {/* <TabsTrigger value="notifications">Notifications</TabsTrigger> */}
+          {/* <TabsTrigger value="audit">Audit</TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="company" className="mt-4">
@@ -58,7 +58,7 @@ export default function SystemSettings() {
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="notifications" className="mt-4">
+        {/* <TabsContent value="notifications" className="mt-4">
           <Card><CardHeader><CardTitle>Notification Settings</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <Toggle label="Email admins on sync failure" defaultChecked />
@@ -68,7 +68,7 @@ export default function SystemSettings() {
               <Button onClick={() => toast.success("Saved")}>Save</Button>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent> */}
         <TabsContent value="audit" className="mt-4">
           <Card><CardHeader><CardTitle>Audit Settings</CardTitle></CardHeader>
             <CardContent className="space-y-3">
