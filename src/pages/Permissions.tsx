@@ -606,7 +606,9 @@ export default function Permissions() {
                                     );
                                   }}
                                 >
-                                  {singleRevokeMutation.isPending ? (
+                                  {singleRevokeMutation.isPending && 
+                                   singleRevokeMutation.variables?.folderId === perm.folderId && 
+                                   singleRevokeMutation.variables?.userId === activeUserSearchId ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                   ) : (
                                     <Trash2 className="h-4 w-4" />
