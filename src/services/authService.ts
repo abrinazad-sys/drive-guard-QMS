@@ -18,6 +18,7 @@ export interface LoginResponse {
       role: string;
       isActive: boolean;
       passwordChangeRequired: boolean;
+      profilePhotoUrl?: string | null;
     };
   };
 }
@@ -86,6 +87,44 @@ export function useChangePassword() {
       );
       if (!data.success) {
         throw new Error("Failed to change password");
+      }
+      return data;
+    },
+  });
+}
+
+export interface UpdateProfileResponse {
+  success: boolean;
+  data: {
+    user: {
+      id: number;
+      email: string;
+      name: string;
+      role: string;
+      profilePhotoUrl: string | null;
+      passwordChangeRequired: boolean;
+    };
+  };
+}
+
+export function useUpdateProfile() {
+  return useMutation<
+    UpdateProfileResponse,
+    AxiosError<ApiErrorResponse>,
+    { name: string; photo?: File }
+  >({
+    mutationFn: async ({ name, photo }) => {
+      const formData = new FormData();
+      formData.append("name", name);
+      if (photo) {
+        formData.append("profilePhoto", photo);
+      }
+      const { data } = await axios.patch<UpdateProfileResponse>(
+        "/auth/me",
+        formData,
+      );
+      if (!data.success) {
+        throw new Error("Failed to update profile");
       }
       return data;
     },

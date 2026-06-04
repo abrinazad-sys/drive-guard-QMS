@@ -6,7 +6,10 @@ import {
   useEffect,
 } from "react";
 import { loginApi } from "@/services/authService";
+import createAxiosInstance from "@/config/axios-config";
 import type { Role } from "@/lib/mock-data";
+
+const axios = createAxiosInstance(import.meta.env.VITE_BASE_URL ?? "");
 
 export interface AuthUser {
   id: string | number;
@@ -14,6 +17,7 @@ export interface AuthUser {
   email: string;
   role: string;
   passwordChangeRequired?: boolean;
+  profilePhotoUrl?: string | null;
 }
 
 interface AuthCtx {
@@ -25,6 +29,7 @@ interface AuthCtx {
   logout: () => void;
   completeReset: () => void;
   mustReset: boolean;
+  updateProfile: (name: string, photo?: File) => Promise<AuthUser>;
 }
 
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -65,11 +70,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
       return { success: false, error: "Login failed." };
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
       return {
         success: false,
         error:
-          error.response?.data?.message || "Login failed due to server error.",
+          err.response?.data?.message || "Login failed due to server error.",
       };
     }
   };
@@ -86,9 +92,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const updateProfile = async (name: string, photo?: File) => {
+    const formData = new FormData();
+    formData.append("name", name);
+    if (photo) {
+      formData.append("profilePhoto", photo);
+    }
+
+    const { data } = await axios.patch("/auth/me", formData);
+
+    if (!data.success) {
+      throw new Error(data.message || "Failed to update profile");
+    }
+
+    const updatedUser: AuthUser = {
+      id: data.data.user.id,
+      email: data.data.user.email,
+      name: data.data.user.name,
+      role: data.data.user.role,
+      profilePhotoUrl: data.data.user.profilePhotoUrl,
+      passwordChangeRequired: data.data.user.passwordChangeRequired,
+    };
+
+    setUser(updatedUser);
+    return updatedUser;
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, mustReset, completeReset }}
+      value={{ user, login, logout, mustReset, completeReset, updateProfile }}
     >
       {children}
     </AuthContext.Provider>

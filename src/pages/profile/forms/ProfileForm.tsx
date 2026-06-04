@@ -1,3 +1,4 @@
+import { useRef, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Upload, User, Mail } from "lucide-react";
@@ -12,11 +13,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { profileSchema, type ProfileDto } from "@/dto/ProfileDto";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUpdateUser } from "@/services/userService";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 export function ProfileForm({
   initialName,
@@ -25,7 +25,11 @@ export function ProfileForm({
   initialName: string;
   email: string;
 }) {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
+  const [isPending, setIsPending] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProfileDto>({
     mode: "onChange",
@@ -33,27 +37,8 @@ export function ProfileForm({
     defaultValues: { name: initialName },
   });
 
-  const { mutateAsync: updateProfile, isPending } = useUpdateUser(
-    Number(user?.id || 0),
-  );
-
   const currentName = form.watch("name") || "";
-
-  const onSubmit = async (data: ProfileDto) => {
-    if (!user) return;
-
-    try {
-      const updatedUser = await updateProfile({
-        name: data.name,
-        role: user.role,
-        isActive: (user as any).isActive ?? true,
-      });
-
-      toast.success("Profile updated successfully!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update profile");
-    }
-  };
+  const hasChanges = form.formState.isDirty || !!selectedFile;
 
   const initials =
     currentName
@@ -63,6 +48,54 @@ export function ProfileForm({
       .join("")
       .toUpperCase()
       .slice(0, 2) || "U";
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be less than 5MB");
+      return;
+    }
+
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const photoUrl = previewUrl || user?.profilePhotoUrl || null;
+
+  const onSubmit = async (data: ProfileDto) => {
+    if (!user) return;
+    setIsPending(true);
+
+    try {
+      await updateProfile(data.name, selectedFile || undefined);
+      toast.success("Profile updated successfully!");
+      setSelectedFile(null);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      }
+      form.reset({ name: data.name });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update profile";
+      toast.error(message);
+    } finally {
+      setIsPending(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-lg mx-auto">
@@ -85,11 +118,29 @@ export function ProfileForm({
               {/* Profile Picture Section */}
               <div className="flex flex-col items-center gap-3">
                 <div className="relative group">
-                  <div className="h-24 w-24 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-3xl font-bold shadow-xl border-4 border-background">
-                    {initials}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  <div className="h-24 w-24 rounded-full overflow-hidden shadow-xl border-4 border-background">
+                    {photoUrl ? (
+                      <img
+                        src={photoUrl}
+                        alt={user?.name ?? "Profile"}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-primary flex items-center justify-center text-primary-foreground text-3xl font-bold">
+                        {initials}
+                      </div>
+                    )}
                   </div>
                   <button
                     type="button"
+                    onClick={() => fileInputRef.current?.click()}
                     className="absolute -right-2 -bottom-2 h-10 w-10 bg-background border border-border rounded-full flex items-center justify-center text-foreground shadow-lg hover:bg-accent transition-all"
                   >
                     <Upload className="h-4 w-4" />
@@ -100,7 +151,7 @@ export function ProfileForm({
                     Profile Picture
                   </h3>
                   <p className="text-xs text-muted-foreground mt-1">
-                    PNG, JPG up to 10MB
+                    PNG, JPG up to 5MB
                   </p>
                 </div>
               </div>
@@ -154,7 +205,7 @@ export function ProfileForm({
                 <div className="pt-2">
                   <Button
                     type="submit"
-                    disabled={isPending || !form.formState.isDirty}
+                    disabled={isPending || !hasChanges}
                     className="w-full h-10 rounded-3xl font-semibold text-base shadow-[0_8px_25px_rgba(0,0,0,0.12)] transition-all"
                   >
                     {isPending ? "Saving..." : "Save Changes"}

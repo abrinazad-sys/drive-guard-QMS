@@ -11,6 +11,7 @@ export interface UserDto {
   role: string;
   isActive: boolean;
   passwordChangeRequired: boolean;
+  profilePhotoUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }

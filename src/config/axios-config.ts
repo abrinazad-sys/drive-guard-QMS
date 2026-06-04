@@ -8,9 +8,6 @@ import axios, { AxiosInstance } from 'axios';
 const createAxiosInstance = (baseUrl: string): AxiosInstance => {
   const instance = axios.create({
     baseURL: baseUrl,
-    headers: {
-      'Content-Type': 'application/json',
-    },
   });
 
   // Request interceptor for auth tokens

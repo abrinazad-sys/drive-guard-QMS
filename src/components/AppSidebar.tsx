@@ -127,9 +127,12 @@ export function AppSidebar() {
                 title={user?.name}
                 className="h-10 w-10 rounded-full overflow-hidden p-0 border-gray-200 dark:border-gray-800 shrink-0"
               >
-                <Avatar className="h-full w-full">
+                <Avatar
+                  key={user?.profilePhotoUrl || "no-photo"}
+                  className="h-full w-full"
+                >
                   <AvatarImage
-                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name ?? "User")}&background=random`}
+                    src={user?.profilePhotoUrl || undefined}
                     alt={user?.name ?? "User"}
                   />
                   <AvatarFallback>{initials}</AvatarFallback>
@@ -140,9 +143,12 @@ export function AppSidebar() {
             <div className="flex items-center justify-between w-full mt-2 bg-gray-50 dark:bg-gray-900 rounded-xl p-2 border border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-3 overflow-hidden">
                 <div className="h-10 w-10 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 shrink-0">
-                  <Avatar className="h-full w-full">
+                  <Avatar
+                    key={user?.profilePhotoUrl || "no-photo"}
+                    className="h-full w-full"
+                  >
                     <AvatarImage
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name ?? "User")}&background=random`}
+                      src={user?.profilePhotoUrl || undefined}
                       alt={user?.name ?? "User"}
                     />
                     <AvatarFallback>{initials}</AvatarFallback>

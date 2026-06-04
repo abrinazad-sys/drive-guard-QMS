@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { FileText, FileSpreadsheet, Image, Presentation, File } from "lucide-react";
 
@@ -84,11 +85,13 @@ type AvatarColor = "blue" | "orange" | "green" | "grey";
 export function UserAvatar({
   name,
   email,
+  imageUrl,
   color = "blue",
   size = "default",
 }: {
   name: string;
   email?: string;
+  imageUrl?: string | null;
   color?: AvatarColor;
   size?: "small" | "default" | "large";
 }) {
@@ -114,9 +117,12 @@ export function UserAvatar({
 
   return (
     <div className="flex items-center gap-2.5">
-      <div className={`${sizes[size]} ${colors[color]} rounded-full flex items-center justify-center font-medium`}>
-        {initials}
-      </div>
+      <Avatar className={`${sizes[size]} border border-border`}>
+        <AvatarImage src={imageUrl || undefined} alt={name} />
+        <AvatarFallback className={`${colors[color]} ${sizes[size]} rounded-full`}>
+          {initials}
+        </AvatarFallback>
+      </Avatar>
       {email && (
         <div className="flex flex-col">
           <span className="text-sm font-medium text-foreground">{name}</span>

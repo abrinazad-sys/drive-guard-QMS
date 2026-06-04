@@ -10,7 +10,7 @@ export const contactSchema = z.object({
             message: "Full name can only contain letters and spaces",
         }),
 
-    email: z.email("Please enter a valid email"),
+    email: z.string().email("Please enter a valid email"),
 
     subject: z
         .string()

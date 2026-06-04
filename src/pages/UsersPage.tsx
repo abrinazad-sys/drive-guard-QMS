@@ -347,7 +347,7 @@ export default function Users() {
                     <TableRow key={u.id}>
                       <TableCell>
                         <Avatar className="h-9 w-9 border border-border">
-                          <AvatarImage src={(u as any).avatarUrl} />
+                          <AvatarImage src={u.profilePhotoUrl || undefined} />
                           <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
                             {u.name
                               .split(" ")
