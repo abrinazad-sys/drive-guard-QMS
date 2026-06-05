@@ -245,46 +245,47 @@ export default function Documents() {
         )}
 
         <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
-          <DialogContent className="max-w-4xl w-full h-[85vh] flex flex-col p-6 overflow-hidden">
-            <DialogHeader className="mb-4">
+          <DialogContent className="max-w-[100vw] w-full h-[100vh] flex flex-col p-4 overflow-hidden">
+            <DialogHeader className="">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <DialogTitle className="text-xl">{previewFile?.name}</DialogTitle>
-                  <DialogDescription>Document Preview</DialogDescription>
+                  {/* <DialogDescription>Document Preview</DialogDescription> */}
                 </div>
               </div>
             </DialogHeader>
 
             <div className="flex-1 bg-slate-50 dark:bg-slate-900 rounded-xl border border-border overflow-hidden relative flex items-center justify-center">
               {previewFile && (() => {
-                // Convert Drive webViewLink to embed-compatible URL
-                // webViewLink: https://drive.google.com/file/d/FILE_ID/view?usp=...
-                // embed URL:   https://drive.google.com/file/d/FILE_ID/preview
                 const embedUrl = previewFile.webViewLink
                   .replace(/\/view(\?.*)?$/, "/preview")
                   .replace(/\/edit(\?.*)?$/, "/preview");
 
-                const previewable = ["pdf", "docx", "doc", "xlsx", "xls", "pptx", "ppt",
-                  "png", "jpg", "jpeg", "webp", "gif", "txt", "csv"].includes(
-                    previewFile.extension.toLowerCase()
+                if (previewFile.previewStrategy === "inline") {
+                  return (
+                    <iframe
+                      key={previewFile.id}
+                      src={embedUrl}
+                      className="w-full h-full border-0"
+                      title={previewFile.name}
+                      allow="autoplay"
+                    />
                   );
+                }
 
-                return previewable ? (
-                  <iframe
-                    key={previewFile.id}
-                    src={embedUrl}
-                    className="w-full h-full border-0"
-                    title={previewFile.name}
-                    allow="autoplay"
-                  />
-                ) : (
+                const isRedirect = previewFile.previewStrategy === "redirect";
+                return (
                   <div className="text-center p-12">
                     <div className="h-20 w-20 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
                       <FileIcon type={previewFile.extension} />
                     </div>
-                    <h3 className="text-lg font-medium mb-1">No preview available</h3>
+                    <h3 className="text-lg font-medium mb-1">
+                      {isRedirect ? "Preview on Google Drive" : "No preview available"}
+                    </h3>
                     <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
-                      This file type ({previewFile.extension.toUpperCase()}) cannot be previewed directly.
+                      {isRedirect
+                        ? `This file type (${previewFile.extension.toUpperCase()}) can be previewed on Google Drive.`
+                        : `This file type (${previewFile.extension.toUpperCase()}) cannot be previewed directly.`}
                     </p>
                     <Button variant="outline" onClick={() => window.open(previewFile.webViewLink, "_blank")}>
                       Open in Google Drive
@@ -294,7 +295,7 @@ export default function Documents() {
               })()}
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 mt-6 pt-4 border-t border-border shrink-0">
+            <div className="flex flex-wrap items-center justify-end gap-2 mt-3 pt-3 border-t border-border shrink-0">
               <Button variant="ghost" onClick={() => setPreviewFile(null)} className="rounded-xl">
                 Close
               </Button>

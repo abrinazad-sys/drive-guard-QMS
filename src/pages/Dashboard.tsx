@@ -3,14 +3,13 @@ import { MetricCard, PageHeader, StatusBadge } from "@/components/shared";
 import {
   Users,
   FolderOpen,
-  AlertTriangle,
-  Download,
   Cloud,
   RefreshCw,
   ChevronRight,
   Clock,
   Loader2,
   Check,
+  Download
 } from "lucide-react";
 import {
   Card,
@@ -31,7 +30,7 @@ import {
 } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
 import { useFolders } from "@/services/fileService";
-import { useAdminUsers } from "@/services/userService";
+import { useDashboardStats } from "@/services/systemService";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -45,7 +44,7 @@ function AdminDashboard() {
     isLoading: loadingFolders,
     refetch: refetchFolders,
   } = useFolders();
-  const { data: users = [], isLoading: loadingUsers } = useAdminUsers();
+  const { data: stats, isLoading: loadingStats } = useDashboardStats();
 
   const { data: auditData, isLoading: loadingLogs } = useAuditLogs({
     limit: 6,
@@ -61,28 +60,29 @@ function AdminDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           label="Total Users"
-          value={loadingUsers ? "..." : users.length}
+          value={loadingStats ? "..." : stats?.users.total ?? "..."}
           icon={<Users className="h-5 w-5" />}
           hint="Registered accounts"
         />
         <MetricCard
-          label="Folders Managed"
-          value={loadingFolders ? "..." : rootFolders.length}
-          icon={<FolderOpen className="h-5 w-5" />}
-          hint="Top-level folders"
-        />
-        <MetricCard
-          label="Sync Failures"
-          value={0}
-          icon={<AlertTriangle className="h-5 w-5" />}
-          hint="System healthy"
+          label="Active Users"
+          value={loadingStats ? "..." : stats?.users.active ?? "..."}
+          icon={<Users className="h-5 w-5" />}
+          hint="Currently active"
           variant="success"
         />
         <MetricCard
-          label="Recent Downloads"
-          value={217}
-          icon={<Download className="h-5 w-5" />}
-          hint="Last 7 days"
+          label="Inactive Users"
+          value={loadingStats ? "..." : stats?.users.inactive ?? "..."}
+          icon={<Users className="h-5 w-5" />}
+          hint="Disabled accounts"
+          variant="warning"
+        />
+        <MetricCard
+          label="Total Folders"
+          value={loadingStats ? "..." : stats?.folders.root ?? "..."}
+          icon={<FolderOpen className="h-5 w-5" />}
+          hint="Root-level folders"
         />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

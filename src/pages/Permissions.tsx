@@ -447,7 +447,7 @@ export default function Permissions() {
             </Card>
           )}
 
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
@@ -465,7 +465,7 @@ export default function Permissions() {
               </label>
               <Input type="date" />
             </CardContent>
-          </Card>
+          </Card> */}
         </TabsContent>
 
         <TabsContent value="user-access" className="space-y-6">
