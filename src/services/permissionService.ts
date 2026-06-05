@@ -148,3 +148,47 @@ export function useUserPermissions(userId: number | null) {
     enabled: !!userId,
   });
 }
+
+// List users who currently have access to a folder
+interface UsersWithAccessResponse {
+  success: boolean;
+  data: {
+    users: { id: number; name: string; email: string; role: string; isActive: boolean }[];
+    total: number;
+  };
+}
+
+export function useUsersWithAccess(folderId: string | null, search?: string) {
+  return useQuery<UsersWithAccessResponse["data"]["users"], AxiosError<ApiErrorResponse>>({
+    queryKey: ["users-with-access", folderId, search],
+    queryFn: async () => {
+      if (!folderId) return [];
+      const { data } = await axios.get<UsersWithAccessResponse>(`/admin/permissions/folders/${folderId}/users/with-access`, { params: { search } });
+      if (!data.success) throw new Error("Failed to fetch users with access");
+      return data.data.users;
+    },
+    enabled: !!folderId,
+  });
+}
+
+// List users who do NOT have access to a folder (useful for granting access)
+interface UsersWithoutAccessResponse {
+  success: boolean;
+  data: {
+    users: { id: number; name: string; email: string; role: string; isActive: boolean }[];
+    total: number;
+  };
+}
+
+export function useUsersWithoutAccess(folderId: string | null, search?: string) {
+  return useQuery<UsersWithoutAccessResponse["data"]["users"], AxiosError<ApiErrorResponse>>({
+    queryKey: ["users-without-access", folderId, search],
+    queryFn: async () => {
+      if (!folderId) return [];
+      const { data } = await axios.get<UsersWithoutAccessResponse>(`/admin/permissions/folders/${folderId}/users/without-access`, { params: { search } });
+      if (!data.success) throw new Error("Failed to fetch users without access");
+      return data.data.users;
+    },
+    enabled: !!folderId,
+  });
+}

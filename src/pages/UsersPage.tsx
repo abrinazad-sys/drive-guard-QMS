@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { AxiosError } from "axios";
 import { PageHeader, StatusBadge } from "@/components/shared";
 import { type User } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
@@ -135,6 +136,13 @@ export default function Users() {
     }
   }, [editUser]);
 
+  useEffect(() => {
+    if (createOpen) {
+      setNewPassword("");
+      setShowPassword(false);
+    }
+  }, [createOpen]);
+
   const filtered = users.filter(
     (u) =>
       (u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -166,9 +174,34 @@ export default function Users() {
           setNewEmailPrefix("");
           setNewPassword("");
         },
-        onError: (err) => toast.error(getApiErrorMessage(err as any)),
+        onError: (err) => toast.error(getApiErrorMessage(err as AxiosError)),
       },
     );
+  };
+
+  const generateStrongPassword = () => {
+    const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const lower = "abcdefghijkmnopqrstuvwxyz";
+    const digits = "23456789";
+    const symbols = "!@#$%&*?";
+    const all = `${upper}${lower}${digits}${symbols}`;
+
+    const pick = (chars: string) => chars[Math.floor(Math.random() * chars.length)];
+
+    const passwordChars = [
+      pick(upper),
+      pick(lower),
+      pick(digits),
+      pick(symbols),
+      ...Array.from({ length: 10 }, () => pick(all)),
+    ];
+
+    for (let i = passwordChars.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [passwordChars[i], passwordChars[j]] = [passwordChars[j], passwordChars[i]];
+    }
+
+    return passwordChars.join("");
   };
 
   const handleUpdate = () => {
@@ -184,7 +217,7 @@ export default function Users() {
           setEditUser(null);
           refetch();
         },
-        onError: (err) => toast.error(getApiErrorMessage(err as any)),
+        onError: (err) => toast.error(getApiErrorMessage(err as AxiosError)),
       },
     );
   };
@@ -220,7 +253,7 @@ export default function Users() {
           setUserToToggle(null);
         },
         onError: (err) => {
-          toast.error(getApiErrorMessage(err as any));
+          toast.error(getApiErrorMessage(err as AxiosError));
           setConfirmOpen(false);
           setUserToToggle(null);
         },
@@ -242,7 +275,7 @@ export default function Users() {
           setTempPassword("");
           refetch();
         },
-        onError: (err) => toast.error(getApiErrorMessage(err as any)),
+        onError: (err) => toast.error(getApiErrorMessage(err as AxiosError)),
       },
     );
   };
@@ -489,7 +522,16 @@ export default function Users() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="new-user-password">Initial password</Label>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="new-user-password">Initial password</Label>
+                <button
+                  type="button"
+                  onClick={() => setNewPassword(generateStrongPassword())}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                  Generate strong pass
+                </button>
+              </div>
               <div className="relative">
                 <Input
                   id="new-user-password"
@@ -514,14 +556,14 @@ export default function Users() {
                 </button>
               </div>
             </div>
-            <label className="flex items-center gap-2 text-sm">
+            {/* <label className="flex items-center gap-2 text-sm">
               <Checkbox defaultChecked />
               Force password reset on first login
             </label>
             <label className="flex items-center justify-between text-sm">
               <span>Active</span>
               <Switch checked={newActive} onCheckedChange={setNewActive} />
-            </label>
+            </label> */}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>

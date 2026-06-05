@@ -172,7 +172,7 @@ function AdminDashboard() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Workspace</span>
-                <span className="font-medium">bedata.com</span>
+                <span className="font-medium">bedatasolutions.com</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last Sync</span>

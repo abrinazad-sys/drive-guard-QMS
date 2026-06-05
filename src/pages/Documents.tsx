@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useFolders, useFolderContents, downloadFile } from "@/services/fileService";
 import { useAdminUsers } from "@/services/userService";
-import { useGrantPermission, useFolderPermissions, useRevokePermission } from "@/services/permissionService";
+import { useGrantPermission, useFolderPermissions, useRevokePermission, useUsersWithoutAccess } from "@/services/permissionService";
 import { auditService } from "@/services/auditService";
 import type { FileDto, FolderDto } from "@/dto/FolderDto";
 
@@ -39,6 +39,7 @@ export default function Documents() {
   const { data: rootFolders = [], isLoading: loadingRoot } = useFolders();
   const { data: folderContents, isLoading: loadingContents } = useFolderContents(currentFolderId || "");
   const { data: allUsers = [] } = useAdminUsers();
+  const { data: usersWithoutAccess = [] } = useUsersWithoutAccess(grantPermissionFolder?.id || null, userSearchQuery);
   const grantPermissionMutation = useGrantPermission();
   const revokePermissionMutation = useRevokePermission();
   const { data: folderPermissions = [], isLoading: loadingPermissions, refetch: refetchPermissions } = useFolderPermissions(accessPanelFolder?.id || null);
@@ -53,7 +54,7 @@ export default function Documents() {
     f.name.toLowerCase().includes(search.toLowerCase()) && (filter === "all" || f.extension === filter)
   );
 
-  const filteredUsers = allUsers.filter(u =>
+  const filteredUsers = (grantPermissionFolder ? usersWithoutAccess : allUsers).filter(u =>
     u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
   );
@@ -84,7 +85,7 @@ export default function Documents() {
         onSuccess: () => {
           // Audit Log
           selectedUserIds.forEach(userId => {
-            const user = allUsers.find(u => u.id === userId);
+            const user = (grantPermissionFolder ? usersWithoutAccess : allUsers).find(u => u.id === userId);
             auditService.addLog({
               actor: "Admin",
               role: "admin",
@@ -122,246 +123,246 @@ export default function Documents() {
   return (
     <div className="relative h-full">
       <div className={`space-y-6 transition-opacity duration-200 ${accessPanelFolder ? "opacity-40" : "opacity-100"}`}>
-      <PageHeader title="Documents" description="Browse folders and files synced from Google Drive." />
+        <PageHeader title="Documents" description="Browse folders and files synced from Google Drive." />
 
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <button onClick={() => setCurrentFolderId(null)} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
-          <FolderOpen className="h-4 w-4" />Home
-        </button>
-        {currentFolderId && (
-          <>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium text-primary">Current Folder</span>
-          </>
-        )}
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={currentFolderId ? "Search files/folders in this folder..." : "Search folders..."} className="pl-9" />
-        </div>
-        {currentFolderId && (
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All file types</SelectItem>
-              <SelectItem value="pdf">PDF</SelectItem>
-              <SelectItem value="docx">Word</SelectItem>
-              <SelectItem value="xlsx">Spreadsheet</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
-        {currentFolderId && <Button variant="outline" onClick={() => setCurrentFolderId(null)}><ArrowLeft className="h-4 w-4 mr-2" />Back</Button>}
-        {currentFolderId && isAdmin && (
-          <Button
-            variant="outline"
-            onClick={() => {
-              const current = foldersToDisplay.find(f => f.id === currentFolderId) || rootFolders.find(f => f.id === currentFolderId);
-              if (current) setAccessPanelFolder(current);
-              else setAccessPanelFolder({ id: currentFolderId, name: "Current Folder", type: "folder", modifiedAt: "", parentId: null });
-            }}
-            className="rounded-xl border-border hover:bg-accent hover:text-accent-foreground"
-          >
-            Manage Access
-          </Button>
-        )}
-      </div>
-
-      {isLoading ? (
-        <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
-      ) : (
-        <div className="space-y-6">
-          {filteredFolders.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {filteredFolders.map(f => (
-                <div key={f.id} className="relative group">
-                  <div
-                    onClick={() => setCurrentFolderId(f.id)}
-                    className="p-4 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent transition cursor-pointer"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <FolderOpen className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0 pr-6">
-                        <div className="font-medium truncate group-hover:text-primary transition">{f.name}</div>
-                        <div className="text-xs text-muted-foreground mt-1">Folder · {new Date(f.modifiedAt).toLocaleDateString()}</div>
-                      </div>
-                    </div>
-                  </div>
-                  {isAdmin && (
-                    <div className="absolute top-2 right-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setGrantPermissionFolder(f)}>
-                            Grant Permission
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAccessPanelFolder(f)}>
-                            Manage Access
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {filteredFiles.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredFiles.map(f => (
-                <Card key={f.id} className="p-4 hover:border-primary transition">
-                  <div className="flex items-start gap-3">
-                    <FileIcon type={f.extension} />
-                    <div className="flex-1 min-w-0">
-                      <button onClick={() => setDetailFile(f)} className="font-medium truncate text-left hover:text-primary block w-full">{f.name}</button>
-                      <div className="text-xs text-muted-foreground mt-0.5">{f.size} · {new Date(f.modifiedAt).toLocaleDateString()}</div>
-                      <div className="flex items-center gap-1 mt-3">
-                        <Button size="sm" variant="outline" onClick={() => setPreviewFile(f)}><Eye className="h-3 w-3 mr-1" />Preview</Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDownload(f.id, f.name)} disabled={downloading === f.id}>
-                          {downloading === f.id ? <Loader2 className="h-3 w-3 animate-spin" /> : downloaded === f.id ? <Check className="h-3 w-3 text-green-600" /> : <Download className="h-3 w-3" />}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setDetailFile(f)}><MoreVertical className="h-3 w-3" /></Button>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {filteredFolders.length === 0 && filteredFiles.length === 0 && (
-            <EmptyState title="Nothing here" description="This folder is empty or no items match your search." />
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <button onClick={() => setCurrentFolderId(null)} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
+            <FolderOpen className="h-4 w-4" />Home
+          </button>
+          {currentFolderId && (
+            <>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium text-primary">Current Folder</span>
+            </>
           )}
         </div>
-      )}
 
-      <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
-        <DialogContent className="max-w-4xl w-full h-[85vh] flex flex-col p-6 overflow-hidden">
-          <DialogHeader className="mb-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <DialogTitle className="text-xl">{previewFile?.name}</DialogTitle>
-                <DialogDescription>Document Preview</DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          
-          <div className="flex-1 bg-slate-50 dark:bg-slate-900 rounded-xl border border-border overflow-hidden relative flex items-center justify-center">
-            {previewFile && (() => {
-              // Convert Drive webViewLink to embed-compatible URL
-              // webViewLink: https://drive.google.com/file/d/FILE_ID/view?usp=...
-              // embed URL:   https://drive.google.com/file/d/FILE_ID/preview
-              const embedUrl = previewFile.webViewLink
-                .replace(/\/view(\?.*)?$/, "/preview")
-                .replace(/\/edit(\?.*)?$/, "/preview");
-
-              const previewable = ["pdf", "docx", "doc", "xlsx", "xls", "pptx", "ppt",
-                "png", "jpg", "jpeg", "webp", "gif", "txt", "csv"].includes(
-                  previewFile.extension.toLowerCase()
-                );
-
-              return previewable ? (
-                <iframe
-                  key={previewFile.id}
-                  src={embedUrl}
-                  className="w-full h-full border-0"
-                  title={previewFile.name}
-                  allow="autoplay"
-                />
-              ) : (
-                <div className="text-center p-12">
-                  <div className="h-20 w-20 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <FileIcon type={previewFile.extension} />
-                  </div>
-                  <h3 className="text-lg font-medium mb-1">No preview available</h3>
-                  <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
-                    This file type ({previewFile.extension.toUpperCase()}) cannot be previewed directly.
-                  </p>
-                  <Button variant="outline" onClick={() => window.open(previewFile.webViewLink, "_blank")}>
-                    Open in Google Drive
-                  </Button>
-                </div>
-              );
-            })()}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={currentFolderId ? "Search files/folders in this folder..." : "Search folders..."} className="pl-9" />
           </div>
-          
-          <div className="flex flex-wrap items-center justify-end gap-2 mt-6 pt-4 border-t border-border shrink-0">
-            <Button variant="ghost" onClick={() => setPreviewFile(null)} className="rounded-xl">
-              Close
+          {currentFolderId && (
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All file types</SelectItem>
+                <SelectItem value="pdf">PDF</SelectItem>
+                <SelectItem value="docx">Word</SelectItem>
+                <SelectItem value="xlsx">Spreadsheet</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          {currentFolderId && <Button variant="outline" onClick={() => setCurrentFolderId(null)}><ArrowLeft className="h-4 w-4 mr-2" />Back</Button>}
+          {currentFolderId && isAdmin && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                const current = foldersToDisplay.find(f => f.id === currentFolderId) || rootFolders.find(f => f.id === currentFolderId);
+                if (current) setAccessPanelFolder(current);
+                else setAccessPanelFolder({ id: currentFolderId, name: "Current Folder", type: "folder", modifiedAt: "", parentId: null });
+              }}
+              className="rounded-xl border-border hover:bg-accent hover:text-accent-foreground"
+            >
+              Manage Access
             </Button>
-            
-            {previewFile && (
-              <>
-                <Button 
-                  variant="outline" 
-                  className="rounded-xl border-border bg-background hover:bg-accent"
-                  onClick={() => window.open(previewFile.webViewLink, "_blank")}
-                >
-                  <Cloud className="h-4 w-4 mr-2 text-primary" />
-                  Open in Drive
-                </Button>
-                
-                <Button 
-                  className="rounded-xl px-6"
-                  onClick={() => handleDownload(previewFile.id, previewFile.name)} 
-                  disabled={downloading === previewFile.id}
-                >
-                  {downloading === previewFile.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : downloaded === previewFile.id ? (
-                    <Check className="h-4 w-4 mr-2" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                  {downloaded === previewFile.id ? "Downloaded" : "Download"}
-                </Button>
-              </>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
+        ) : (
+          <div className="space-y-6">
+            {filteredFolders.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {filteredFolders.map(f => (
+                  <div key={f.id} className="relative group">
+                    <div
+                      onClick={() => setCurrentFolderId(f.id)}
+                      className="p-4 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent transition cursor-pointer"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <FolderOpen className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0 pr-6">
+                          <div className="font-medium truncate group-hover:text-primary transition">{f.name}</div>
+                          <div className="text-xs text-muted-foreground mt-1">Folder · {new Date(f.modifiedAt).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                    </div>
+                    {isAdmin && (
+                      <div className="absolute top-2 right-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setGrantPermissionFolder(f)}>
+                              Grant Permission
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setAccessPanelFolder(f)}>
+                              Manage Access
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {filteredFiles.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredFiles.map(f => (
+                  <Card key={f.id} className="p-4 hover:border-primary transition">
+                    <div className="flex items-start gap-3">
+                      <FileIcon type={f.extension} />
+                      <div className="flex-1 min-w-0">
+                        <button onClick={() => setDetailFile(f)} className="font-medium truncate text-left hover:text-primary block w-full">{f.name}</button>
+                        <div className="text-xs text-muted-foreground mt-0.5">{f.size} · {new Date(f.modifiedAt).toLocaleDateString()}</div>
+                        <div className="flex items-center gap-1 mt-3">
+                          <Button size="sm" variant="outline" onClick={() => setPreviewFile(f)}><Eye className="h-3 w-3 mr-1" />Preview</Button>
+                          <Button size="sm" variant="outline" onClick={() => handleDownload(f.id, f.name)} disabled={downloading === f.id}>
+                            {downloading === f.id ? <Loader2 className="h-3 w-3 animate-spin" /> : downloaded === f.id ? <Check className="h-3 w-3 text-green-600" /> : <Download className="h-3 w-3" />}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setDetailFile(f)}><MoreVertical className="h-3 w-3" /></Button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {filteredFolders.length === 0 && filteredFiles.length === 0 && (
+              <EmptyState title="Nothing here" description="This folder is empty or no items match your search." />
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
 
-      <Sheet open={!!detailFile} onOpenChange={() => setDetailFile(null)}>
-        <SheetContent>
-          <SheetHeader><SheetTitle>File Details</SheetTitle></SheetHeader>
-          {detailFile && (
-            <div className="space-y-4 mt-6">
-              <div className="flex items-center gap-3"><FileIcon type={detailFile.extension} /><div><div className="font-semibold">{detailFile.name}</div><div className="text-xs text-muted-foreground">{detailFile.size}</div></div></div>
-              <dl className="space-y-2 text-sm">
-                <Row k="Type" v={detailFile.extension.toUpperCase()} />
-                <Row k="Modified" v={new Date(detailFile.modifiedAt).toLocaleString()} />
-                <Row k="Preview" v={<Button variant="link" className="p-0 h-auto text-xs" onClick={() => window.open(detailFile.webViewLink, "_blank")}>View on Drive</Button>} />
-              </dl>
-              <div className="flex gap-2 pt-4">
-                <Button className="flex-1" onClick={() => { setPreviewFile(detailFile); setDetailFile(null); }}><Eye className="h-4 w-4 mr-2" />Preview</Button>
-                <Button 
-                  className="flex-1" 
-                  variant="outline" 
-                  onClick={() => handleDownload(detailFile.id, detailFile.name)}
-                  disabled={downloading === detailFile.id}
-                >
-                  {downloading === detailFile.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : downloaded === detailFile.id ? (
-                    <Check className="h-4 w-4 mr-2" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                  {downloaded === detailFile.id ? "Downloaded" : "Download"}
-                </Button>
+        <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
+          <DialogContent className="max-w-4xl w-full h-[85vh] flex flex-col p-6 overflow-hidden">
+            <DialogHeader className="mb-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <DialogTitle className="text-xl">{previewFile?.name}</DialogTitle>
+                  <DialogDescription>Document Preview</DialogDescription>
+                </div>
               </div>
+            </DialogHeader>
+
+            <div className="flex-1 bg-slate-50 dark:bg-slate-900 rounded-xl border border-border overflow-hidden relative flex items-center justify-center">
+              {previewFile && (() => {
+                // Convert Drive webViewLink to embed-compatible URL
+                // webViewLink: https://drive.google.com/file/d/FILE_ID/view?usp=...
+                // embed URL:   https://drive.google.com/file/d/FILE_ID/preview
+                const embedUrl = previewFile.webViewLink
+                  .replace(/\/view(\?.*)?$/, "/preview")
+                  .replace(/\/edit(\?.*)?$/, "/preview");
+
+                const previewable = ["pdf", "docx", "doc", "xlsx", "xls", "pptx", "ppt",
+                  "png", "jpg", "jpeg", "webp", "gif", "txt", "csv"].includes(
+                    previewFile.extension.toLowerCase()
+                  );
+
+                return previewable ? (
+                  <iframe
+                    key={previewFile.id}
+                    src={embedUrl}
+                    className="w-full h-full border-0"
+                    title={previewFile.name}
+                    allow="autoplay"
+                  />
+                ) : (
+                  <div className="text-center p-12">
+                    <div className="h-20 w-20 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <FileIcon type={previewFile.extension} />
+                    </div>
+                    <h3 className="text-lg font-medium mb-1">No preview available</h3>
+                    <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
+                      This file type ({previewFile.extension.toUpperCase()}) cannot be previewed directly.
+                    </p>
+                    <Button variant="outline" onClick={() => window.open(previewFile.webViewLink, "_blank")}>
+                      Open in Google Drive
+                    </Button>
+                  </div>
+                );
+              })()}
             </div>
-          )}
-        </SheetContent>
-      </Sheet>
+
+            <div className="flex flex-wrap items-center justify-end gap-2 mt-6 pt-4 border-t border-border shrink-0">
+              <Button variant="ghost" onClick={() => setPreviewFile(null)} className="rounded-xl">
+                Close
+              </Button>
+
+              {previewFile && (
+                <>
+                  <Button
+                    variant="outline"
+                    className="rounded-xl border-border bg-background hover:bg-accent"
+                    onClick={() => window.open(previewFile.webViewLink, "_blank")}
+                  >
+                    <Cloud className="h-4 w-4 mr-2 text-primary" />
+                    Open in Drive
+                  </Button>
+
+                  <Button
+                    className="rounded-xl px-6"
+                    onClick={() => handleDownload(previewFile.id, previewFile.name)}
+                    disabled={downloading === previewFile.id}
+                  >
+                    {downloading === previewFile.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : downloaded === previewFile.id ? (
+                      <Check className="h-4 w-4 mr-2" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    {downloaded === previewFile.id ? "Downloaded" : "Download"}
+                  </Button>
+                </>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Sheet open={!!detailFile} onOpenChange={() => setDetailFile(null)}>
+          <SheetContent>
+            <SheetHeader><SheetTitle>File Details</SheetTitle></SheetHeader>
+            {detailFile && (
+              <div className="space-y-4 mt-6">
+                <div className="flex items-center gap-3"><FileIcon type={detailFile.extension} /><div><div className="font-semibold">{detailFile.name}</div><div className="text-xs text-muted-foreground">{detailFile.size}</div></div></div>
+                <dl className="space-y-2 text-sm">
+                  <Row k="Type" v={detailFile.extension.toUpperCase()} />
+                  <Row k="Modified" v={new Date(detailFile.modifiedAt).toLocaleString()} />
+                  <Row k="Preview" v={<Button variant="link" className="p-0 h-auto text-xs" onClick={() => window.open(detailFile.webViewLink, "_blank")}>View on Drive</Button>} />
+                </dl>
+                <div className="flex gap-2 pt-4">
+                  <Button className="flex-1" onClick={() => { setPreviewFile(detailFile); setDetailFile(null); }}><Eye className="h-4 w-4 mr-2" />Preview</Button>
+                  <Button
+                    className="flex-1"
+                    variant="outline"
+                    onClick={() => handleDownload(detailFile.id, detailFile.name)}
+                    disabled={downloading === detailFile.id}
+                  >
+                    {downloading === detailFile.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : downloaded === detailFile.id ? (
+                      <Check className="h-4 w-4 mr-2" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    {downloaded === detailFile.id ? "Downloaded" : "Download"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </SheetContent>
+        </Sheet>
       </div>
 
       {accessPanelFolder && (
@@ -407,31 +408,31 @@ export default function Documents() {
                       revokePermissionMutation.mutate(
                         { folderId: accessPanelFolder.id, userId: perm.user.id },
                         {
-                        onSuccess: () => {
-                          const targetUser = folderPermissions.find(p => p.user.id === perm.user.id)?.user;
-                          auditService.addLog({
-                            actor: "Admin",
-                            role: "admin",
-                            action: "Revoked access",
-                            target: targetUser?.name || `User ${perm.user.id}`,
-                            folder: accessPanelFolder.name,
-                            status: "active"
-                          });
-                          toast.success("Permission revoked successfully");
-                          refetchPermissions();
-                        },
-                        onError: () => {
-                          const targetUser = folderPermissions.find(p => p.user.id === perm.user.id)?.user;
-                          auditService.addLog({
-                            actor: "Admin",
-                            role: "admin",
-                            action: "Revoked access",
-                            target: targetUser?.name || `User ${perm.user.id}`,
-                            folder: accessPanelFolder.name,
-                            status: "deactive"
-                          });
-                        },
-                        onSettled: () => setRevokingUserId(null),
+                          onSuccess: () => {
+                            const targetUser = folderPermissions.find(p => p.user.id === perm.user.id)?.user;
+                            auditService.addLog({
+                              actor: "Admin",
+                              role: "admin",
+                              action: "Revoked access",
+                              target: targetUser?.name || `User ${perm.user.id}`,
+                              folder: accessPanelFolder.name,
+                              status: "active"
+                            });
+                            toast.success("Permission revoked successfully");
+                            refetchPermissions();
+                          },
+                          onError: () => {
+                            const targetUser = folderPermissions.find(p => p.user.id === perm.user.id)?.user;
+                            auditService.addLog({
+                              actor: "Admin",
+                              role: "admin",
+                              action: "Revoked access",
+                              target: targetUser?.name || `User ${perm.user.id}`,
+                              folder: accessPanelFolder.name,
+                              status: "deactive"
+                            });
+                          },
+                          onSettled: () => setRevokingUserId(null),
                         }
                       );
                     }}

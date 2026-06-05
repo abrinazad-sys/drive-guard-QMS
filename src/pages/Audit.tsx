@@ -57,6 +57,7 @@ export default function Audit() {
   // Unique target types for the filter dropdown
   // Ideally this would come from another API or be a fixed list
   const targetTypes = ["User", "FolderPermission", "Folder", "File"];
+  const hideFolderCol = targetTypeFilter === "User";
 
   return (
     <div className="space-y-6">
@@ -64,10 +65,13 @@ export default function Audit() {
         <>
           <Button variant="outline" onClick={() => {
             if (logs.length === 0) { toast.error("No logs to export"); return; }
-            const header = "Time,Admin,Action,Target,Folder,IP";
-            const csvRows = logs.map(a =>
-              [new Date(a.createdAt).toLocaleString(), a.adminName, a.action, a.targetName, a.folderName || "", a.ipAddress].map(v => `"${v}"`).join(",")
-            );
+            const header = hideFolderCol ? "Time,Admin,Action,Target,IP" : "Time,Admin,Action,Target,Folder,IP";
+            const csvRows = logs.map(a => {
+              const base = [new Date(a.createdAt).toLocaleString(), a.adminName, a.action, a.targetName];
+              if (!hideFolderCol) base.push(a.folderName || "");
+              base.push(a.ipAddress);
+              return base.map(v => `"${v}"`).join(",");
+            });
             const blob = new Blob([header + "\n" + csvRows.join("\n")], { type: "text/csv" });
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
@@ -82,14 +86,17 @@ export default function Audit() {
             exportToPdf({
               title: "Audit Logs",
               subtitle: `${logs.length} entries \u00b7 Generated ${new Date().toLocaleString()}`,
-              columns: ["Time", "Admin", "Action", "Target", "Folder"],
-              rows: logs.map(a => [
-                new Date(a.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" }),
-                a.adminName,
-                a.action,
-                a.targetName,
-                a.folderName || "-",
-              ]),
+              columns: hideFolderCol ? ["Time", "Admin", "Action", "Target"] : ["Time", "Admin", "Action", "Target", "Folder"],
+              rows: logs.map(a => {
+                const row = [
+                  new Date(a.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" }),
+                  a.adminName,
+                  a.action,
+                  a.targetName,
+                ];
+                if (!hideFolderCol) row.push(a.folderName || "-");
+                return row;
+              }),
               filename: `audit_logs_${new Date().toISOString().slice(0, 10)}.pdf`,
             });
             toast.success("Audit logs exported as PDF");
@@ -134,7 +141,7 @@ export default function Audit() {
                     <TableHead>Admin</TableHead>
                     <TableHead>Action</TableHead>
                     <TableHead>Target</TableHead>
-                    <TableHead>Folder</TableHead>
+                    {!hideFolderCol && <TableHead>Folder</TableHead>}
                     <TableHead>Status</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
@@ -146,11 +153,11 @@ export default function Audit() {
                         <TableCell className="font-medium whitespace-nowrap">{a.adminName}</TableCell>
                         <TableCell className="whitespace-nowrap">{a.action}</TableCell>
                         <TableCell className="whitespace-nowrap">{a.targetName}</TableCell>
-                        <TableCell className="whitespace-nowrap">{a.folderName || "-"}</TableCell>
+                        {!hideFolderCol && <TableCell className="whitespace-nowrap">{a.folderName || "-"}</TableCell>}
                         <TableCell><StatusBadge status="active" /></TableCell>
                       </TableRow>
                     ))}
-                    {logs.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No logs match your filters</TableCell></TableRow>}
+                    {logs.length === 0 && <TableRow><TableCell colSpan={hideFolderCol ? 5 : 6} className="text-center py-12 text-muted-foreground">No logs match your filters</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </div>
