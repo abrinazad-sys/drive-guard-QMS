@@ -4,6 +4,26 @@ import type { FoldersResponse, FolderContentsResponse } from "@/dto/FolderDto";
 
 const axios = createAxiosInstance(import.meta.env.VITE_BASE_URL ?? "");
 
+export function logFileAccess(fileId: string, fileName: string, action: "preview" | "open_in_drive" | "download") {
+  axios.post("/drive/files/access-log", { fileId, fileName, action }).catch(() => {});
+}
+
+interface AccessStats {
+  totalPreviews: number;
+  totalDownloads: number;
+}
+
+export function useFileAccessStats() {
+  return useQuery({
+    queryKey: ["file-access-stats"],
+    queryFn: async () => {
+      const { data } = await axios.get<{ success: boolean; data: AccessStats }>("/drive/files/access-stats");
+      if (!data.success) throw new Error("Failed to fetch access stats");
+      return data.data;
+    },
+  });
+}
+
 
 export function useFolders() {
   return useQuery({

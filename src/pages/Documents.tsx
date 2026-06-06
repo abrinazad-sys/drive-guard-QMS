@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useFolders, useFolderContents, downloadFile } from "@/services/fileService";
+import { useFolders, useFolderContents, downloadFile, logFileAccess } from "@/services/fileService";
 import { useAdminUsers } from "@/services/userService";
 import { useGrantPermission, useFolderPermissions, useRevokePermission, useUsersWithoutAccess } from "@/services/permissionService";
 import { auditService } from "@/services/auditService";
@@ -229,7 +229,7 @@ export default function Documents() {
                         <button onClick={() => setDetailFile(f)} className="font-medium truncate text-left hover:text-primary block w-full">{f.name}</button>
                         <div className="text-xs text-muted-foreground mt-0.5">{f.size} · {new Date(f.modifiedAt).toLocaleDateString()}</div>
                         <div className="flex items-center gap-1 mt-3">
-                          <Button size="sm" variant="outline" onClick={() => setPreviewFile(f)}><Eye className="h-3 w-3 mr-1" />Preview</Button>
+                          <Button size="sm" variant="outline" onClick={() => { logFileAccess(f.id, f.name, "preview"); setPreviewFile(f); }}><Eye className="h-3 w-3 mr-1" />Preview</Button>
                           <Button size="sm" variant="outline" onClick={() => handleDownload(f.id, f.name)} disabled={downloading === f.id}>
                             {downloading === f.id ? <Loader2 className="h-3 w-3 animate-spin" /> : downloaded === f.id ? <Check className="h-3 w-3 text-green-600" /> : <Download className="h-3 w-3" />}
                           </Button>
@@ -291,7 +291,7 @@ export default function Documents() {
                         ? `This file type (${previewFile.extension.toUpperCase()}) can be previewed on Google Drive.`
                         : `This file type (${previewFile.extension.toUpperCase()}) cannot be previewed directly.`}
                     </p>
-                    <Button variant="outline" onClick={() => window.open(previewFile.webViewLink, "_blank")}>
+                    <Button variant="outline" onClick={() => { logFileAccess(previewFile.id, previewFile.name, "open_in_drive"); window.open(previewFile.webViewLink, "_blank"); }}>
                       Open in Google Drive
                     </Button>
                   </div>
@@ -309,7 +309,7 @@ export default function Documents() {
                   <Button
                     variant="outline"
                     className="rounded-xl border-border bg-background hover:bg-accent"
-                    onClick={() => window.open(previewFile.webViewLink, "_blank")}
+                    onClick={() => { logFileAccess(previewFile.id, previewFile.name, "open_in_drive"); window.open(previewFile.webViewLink, "_blank"); }}
                   >
                     <Cloud className="h-4 w-4 mr-2 text-primary" />
                     Open in Drive
@@ -344,10 +344,10 @@ export default function Documents() {
                 <dl className="space-y-2 text-sm">
                   <Row k="Type" v={detailFile.extension.toUpperCase()} />
                   <Row k="Modified" v={new Date(detailFile.modifiedAt).toLocaleString()} />
-                  <Row k="Preview" v={<Button variant="link" className="p-0 h-auto text-xs" onClick={() => window.open(detailFile.webViewLink, "_blank")}>View on Drive</Button>} />
+                  <Row k="Preview" v={<Button variant="link" className="p-0 h-auto text-xs" onClick={() => { logFileAccess(detailFile.id, detailFile.name, "open_in_drive"); window.open(detailFile.webViewLink, "_blank"); }}>View on Drive</Button>} />
                 </dl>
                 <div className="flex gap-2 pt-4">
-                  <Button className="flex-1" onClick={() => { setPreviewFile(detailFile); setDetailFile(null); }}><Eye className="h-4 w-4 mr-2" />Preview</Button>
+                  <Button className="flex-1" onClick={() => { logFileAccess(detailFile.id, detailFile.name, "preview"); setPreviewFile(detailFile); setDetailFile(null); }}><Eye className="h-4 w-4 mr-2" />Preview</Button>
                   <Button
                     className="flex-1"
                     variant="outline"

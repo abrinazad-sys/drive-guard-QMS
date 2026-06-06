@@ -11,7 +11,8 @@ import {
   Clock,
   Loader2,
   Check,
-  Download
+  Download,
+  Eye
 } from "lucide-react";
 import {
   Card,
@@ -31,7 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
-import { useFolders } from "@/services/fileService";
+import { useFolders, useFileAccessStats } from "@/services/fileService";
 import { useDashboardStats } from "@/services/systemService";
 import SyncNowButton from "@/components/SyncNowButton";
 
@@ -48,6 +49,7 @@ function AdminDashboard() {
     refetch: refetchFolders,
   } = useFolders();
   const { data: stats, isLoading: loadingStats } = useDashboardStats();
+  const { data: accessStats, isLoading: loadingAccessStats } = useFileAccessStats();
 
   const { data: auditData, isLoading: loadingLogs } = useAuditLogs({
     limit: 6,
@@ -60,7 +62,7 @@ function AdminDashboard() {
         title="Admin Dashboard"
         description="Overview of your QMS workspace and Drive integration."
       />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <MetricCard
           label="Total Users"
           value={loadingStats ? "..." : stats?.users.total ?? "..."}
@@ -75,18 +77,26 @@ function AdminDashboard() {
           variant="success"
         />
         <MetricCard
-          label="Inactive Users"
-          value={loadingStats ? "..." : stats?.users.inactive ?? "..."}
-          icon={<Users className="h-5 w-5" />}
-          hint="Disabled accounts"
-          variant="warning"
-        />
-        <MetricCard
           label="Total Folders"
           value={loadingStats ? "..." : stats?.folders.root ?? "..."}
           icon={<FolderOpen className="h-5 w-5" />}
           hint="Root-level folders"
         />
+        <MetricCard
+          label="Total Previews"
+          value={loadingAccessStats ? "..." : accessStats?.totalPreviews ?? "..."}
+          icon={<Eye className="h-5 w-5" />}
+          hint="Last 7 days"
+          variant="success"
+        />
+        <MetricCard
+          label="Total Downloads"
+          value={loadingAccessStats ? "..." : accessStats?.totalDownloads ?? "..."}
+          icon={<Download className="h-5 w-5" />}
+          hint="Last 7 days"
+          variant="success"
+        />
+
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
@@ -235,18 +245,19 @@ function EmployeeDashboard() {
   const { data: rootFolders = [], isLoading: loadingFolders, refetch } = useFolders();
   const { isSyncing } = useSyncJob();
   const prevSyncing = useRef(isSyncing);
+  const { data: auditData, isLoading: loadingLogs, refetch: refetchAuditLogs } = useAuditLogs({
+    search: user?.email,
+    limit: 5,
+  });
+  const { data: accessStats, isLoading: loadingAccessStats } = useFileAccessStats();
 
   useEffect(() => {
     if (prevSyncing.current && !isSyncing) {
       refetch();
+      refetchAuditLogs();
     }
     prevSyncing.current = isSyncing;
-  }, [isSyncing, refetch]);
-
-  const { data: auditData, isLoading: loadingLogs } = useAuditLogs({
-    search: user?.name,
-    limit: 5,
-  });
+  }, [isSyncing, refetch, refetchAuditLogs]);
   const logs = auditData?.logs || [];
 
   return (
@@ -267,14 +278,14 @@ function EmployeeDashboard() {
         />
         <MetricCard
           label="Recent Downloads"
-          value={12}
+          value={loadingAccessStats ? "..." : accessStats?.totalDownloads ?? "..."}
           icon={<Download className="h-5 w-5" />}
           hint="Last 7 days"
         />
         <MetricCard
           label="Recent Previews"
-          value={28}
-          icon={<Clock className="h-5 w-5" />}
+          value={loadingAccessStats ? "..." : accessStats?.totalPreviews ?? "..."}
+          icon={<Eye className="h-5 w-5" />}
           hint="Last 7 days"
         />
       </div>
