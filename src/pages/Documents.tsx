@@ -38,7 +38,7 @@ export default function Documents() {
 
   const { data: rootFolders = [], isLoading: loadingRoot } = useFolders();
   const { data: folderContents, isLoading: loadingContents } = useFolderContents(currentFolderId || "");
-  const { data: allUsers = [] } = useAdminUsers();
+  // const { data: allUsers = [] } = useAdminUsers();
   const { data: usersWithoutAccess = [] } = useUsersWithoutAccess(grantPermissionFolder?.id || null, userSearchQuery);
   const grantPermissionMutation = useGrantPermission();
   const revokePermissionMutation = useRevokePermission();
@@ -54,7 +54,11 @@ export default function Documents() {
     f.name.toLowerCase().includes(search.toLowerCase()) && (filter === "all" || f.extension === filter)
   );
 
-  const filteredUsers = (grantPermissionFolder ? usersWithoutAccess : allUsers).filter(u =>
+  // const filteredUsers = (grantPermissionFolder ? usersWithoutAccess : allUsers).filter(u =>
+  //   u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+  //   u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+  // );
+  const filteredUsers = (usersWithoutAccess).filter(u =>
     u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
   );
@@ -84,17 +88,17 @@ export default function Documents() {
       {
         onSuccess: () => {
           // Audit Log
-          selectedUserIds.forEach(userId => {
-            const user = (grantPermissionFolder ? usersWithoutAccess : allUsers).find(u => u.id === userId);
-            auditService.addLog({
-              actor: "Admin",
-              role: "admin",
-              action: "Granted access",
-              target: user?.name || `User ${userId}`,
-              folder: grantPermissionFolder.name,
-              status: "active"
-            });
-          });
+          // selectedUserIds.forEach(userId => {
+          //   const user = (grantPermissionFolder ? usersWithoutAccess : allUsers).find(u => u.id === userId);
+          //   auditService.addLog({
+          //     actor: "Admin",
+          //     role: "admin",
+          //     action: "Granted access",
+          //     target: user?.name || `User ${userId}`,
+          //     folder: grantPermissionFolder.name,
+          //     status: "active"
+          //   });
+          // });
 
           toast.success("Permissions granted successfully");
           setGrantPermissionFolder(null);
@@ -102,17 +106,17 @@ export default function Documents() {
         },
         onError: () => {
           // Audit Log
-          selectedUserIds.forEach(userId => {
-            const user = allUsers.find(u => u.id === userId);
-            auditService.addLog({
-              actor: "Admin",
-              role: "admin",
-              action: "Granted access",
-              target: user?.name || `User ${userId}`,
-              folder: grantPermissionFolder.name,
-              status: "deactive"
-            });
-          });
+          // selectedUserIds.forEach(userId => {
+          //   const user = allUsers.find(u => u.id === userId);
+          //   auditService.addLog({
+          //     actor: "Admin",
+          //     role: "admin",
+          //     action: "Granted access",
+          //     target: user?.name || `User ${userId}`,
+          //     folder: grantPermissionFolder.name,
+          //     status: "deactive"
+          //   });
+          // });
         }
       },
     );

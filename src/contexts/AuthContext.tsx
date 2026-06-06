@@ -70,13 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
       return { success: false, error: "Login failed." };
-    } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
-      return {
-        success: false,
-        error:
-          err.response?.data?.message || "Login failed due to server error.",
-      };
+    } catch (error: any) {
+      const msg = error?.response?.data?.error?.message || "Login failed due to server error.";
+      console.error("Login error:", msg);
+      return { success: false, error: msg };
     }
   };
 
