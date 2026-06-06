@@ -175,11 +175,11 @@ function AdminDashboard() {
                 <span className="text-muted-foreground">Workspace</span>
                 <span className="font-medium">bedatasolutions.com</span>
               </div>
-              <div className="flex justify-between">
+              {/* <div className="flex justify-between">
                 <span className="text-muted-foreground">Last Sync</span>
                 <span className="font-medium">Today, 10:30</span>
-              </div>
-              <Button
+              </div> */}
+              {/* <Button
                 variant="outline"
                 size="sm"
                 className="w-full mt-2"
@@ -187,7 +187,7 @@ function AdminDashboard() {
               >
                 <RefreshCw className="h-3 w-3 mr-2" />
                 Refresh now
-              </Button>
+              </Button> */}
               <SyncNowButton variant="compact" />
             </CardContent>
           </Card>

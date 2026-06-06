@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { SyncJobProvider } from "@/contexts/SyncJobContext";
 import AppLayout from "@/components/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Login from "@/pages/login/Login";
@@ -26,32 +27,34 @@ const App = () => (
     <ThemeProvider>
       <AuthProvider>
         <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/login" element={<Login />} />
-              <Route element={<ProtectedRoute />}>
-                <Route element={<AppLayout />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/documents" element={<Documents />} />
-                  <Route path="/notifications" element={<Notifications />} />
-                  <Route path="/profile" element={<ProfilePage />} />
+          <SyncJobProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/login" element={<Login />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<AppLayout />}>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/documents" element={<Documents />} />
+                    <Route path="/notifications" element={<Notifications />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                  </Route>
                 </Route>
-              </Route>
-              <Route element={<ProtectedRoute role="admin" />}>
-                <Route element={<AppLayout />}>
-                  <Route path="/users" element={<UsersPage />} />
-                  <Route path="/permissions" element={<Permissions />} />
-                  <Route path="/audit" element={<Audit />} />
-                  <Route path="/sync" element={<Sync />} />
-                  <Route path="/settings" element={<SystemSettings />} />
+                <Route element={<ProtectedRoute role="admin" />}>
+                  <Route element={<AppLayout />}>
+                    <Route path="/users" element={<UsersPage />} />
+                    <Route path="/permissions" element={<Permissions />} />
+                    <Route path="/audit" element={<Audit />} />
+                    <Route path="/sync" element={<Sync />} />
+                    <Route path="/settings" element={<SystemSettings />} />
+                  </Route>
                 </Route>
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </SyncJobProvider>
         </TooltipProvider>
       </AuthProvider>
     </ThemeProvider>
