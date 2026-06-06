@@ -118,7 +118,9 @@ export default function ActivityPage() {
                     <TableRow>
                       <TableHead>Time</TableHead>
                       <TableHead>Action</TableHead>
-                      <TableHead>Details</TableHead>
+                      {!isFileMode && <TableHead>Action By</TableHead>}
+                      {!isFileMode && <TableHead>FolderName</TableHead>}
+                      {isFileMode && <TableHead>Details</TableHead>}
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -145,9 +147,21 @@ export default function ActivityPage() {
                             entry.action
                           )}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {entry._kind === "file_access" ? entry.fileName : entry.targetName}
-                        </TableCell>
+                        {!isFileMode && (
+                          <TableCell className="whitespace-nowrap">
+                            {entry.adminName}
+                          </TableCell>
+                        )}
+                        {!isFileMode && (
+                          <TableCell className="whitespace-nowrap">
+                            {entry.folderName}
+                          </TableCell>
+                        )}
+                        {isFileMode && (
+                          <TableCell className="whitespace-nowrap">
+                            {entry.fileName}
+                          </TableCell>
+                        )}
                         <TableCell>
                           <StatusBadge status="active" />
                         </TableCell>
@@ -156,7 +170,7 @@ export default function ActivityPage() {
                     {logs.length === 0 && (
                       <TableRow>
                         <TableCell
-                          colSpan={4}
+                          colSpan={isFileMode ? 4 : 5}
                           className="text-center py-12 text-muted-foreground"
                         >
                           No activity found.

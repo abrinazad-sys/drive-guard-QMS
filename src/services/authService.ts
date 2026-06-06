@@ -4,7 +4,11 @@ import type { AxiosError } from "axios";
 const axios = createAxiosInstance(import.meta.env.VITE_BASE_URL ?? "");
 
 interface ApiErrorResponse {
-  message?: string;
+  success: boolean;
+  error: {
+    code: string;
+    message: string;
+  };
 }
 
 export interface LoginResponse {
@@ -37,8 +41,11 @@ interface UpdatePasswordResponse {
   };
 }
 
-export const getApiErrorMessage = (err: AxiosError<ApiErrorResponse>) =>
-  err.response?.data?.message || err.message;
+export const getApiErrorMessage = (err: AxiosError<ApiErrorResponse>) => {
+  console.log(err)
+  return err.response?.data?.error?.message || err.message;
+}
+  
 
 export async function loginApi(
   email: string,
