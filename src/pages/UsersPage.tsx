@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import type { AxiosError } from "axios";
 import { PageHeader, StatusBadge } from "@/components/shared";
 import { type User } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
@@ -174,7 +173,7 @@ export default function Users() {
           setNewEmailPrefix("");
           setNewPassword("");
         },
-        onError: (err) => toast.error(getApiErrorMessage(err as AxiosError)),
+        onError: (err) => toast.error(getApiErrorMessage(err)),
       },
     );
   };
@@ -217,7 +216,7 @@ export default function Users() {
           setEditUser(null);
           refetch();
         },
-        onError: (err) => toast.error(getApiErrorMessage(err as AxiosError)),
+        onError: (err) => toast.error(getApiErrorMessage(err)),
       },
     );
   };
@@ -253,7 +252,7 @@ export default function Users() {
           setUserToToggle(null);
         },
         onError: (err) => {
-          toast.error(getApiErrorMessage(err as AxiosError));
+          toast.error(getApiErrorMessage(err));
           setConfirmOpen(false);
           setUserToToggle(null);
         },
@@ -275,7 +274,7 @@ export default function Users() {
           setTempPassword("");
           refetch();
         },
-        onError: (err) => toast.error(getApiErrorMessage(err as AxiosError)),
+        onError: (err) => toast.error(getApiErrorMessage(err)),
       },
     );
   };

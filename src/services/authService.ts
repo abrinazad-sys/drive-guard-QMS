@@ -41,9 +41,9 @@ interface UpdatePasswordResponse {
   };
 }
 
-export const getApiErrorMessage = (err: AxiosError<ApiErrorResponse>) => {
-  console.log(err)
-  return err.response?.data?.error?.message || err.message;
+export const getApiErrorMessage = (err: AxiosError<unknown>) => {
+  const data = err.response?.data as { error?: { message?: string } } | undefined;
+  return data?.error?.message || err.message;
 }
   
 
