@@ -56,7 +56,11 @@ export default function Audit() {
 
   // Unique target types for the filter dropdown
   // Ideally this would come from another API or be a fixed list
-  const targetTypes = ["User", "FolderPermission", "Folder", "File"];
+  const targetTypes = ["User", "FolderPermission"];
+  const targetTypeLabels: Record<string, string> = {
+    User: "User",
+    FolderPermission: "Folder Permission",
+  };
   const hideFolderCol = targetTypeFilter === "User";
 
   return (
@@ -118,7 +122,7 @@ export default function Audit() {
               <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Target Type" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All types</SelectItem>
-                {targetTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                {targetTypes.map(t => <SelectItem key={t} value={t}>{targetTypeLabels[t]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
