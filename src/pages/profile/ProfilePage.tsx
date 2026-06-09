@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sun, Moon, Monitor, Check, RotateCcw, Loader2, Clock, Shield, Globe, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 import { toast } from "sonner";
 import { ProfileForm } from "./forms/ProfileForm";
 import { ChangePasswordForm } from "./forms/ChangePasswordForm";
@@ -25,13 +26,39 @@ import { useAuditLogs } from "@/services/auditService";
 
 export function ProfilePage() {
   const { user } = useAuth();
-  const { mode, accent, setMode, setAccent, reset } = useTheme();
+  const { mode, accent, setMode, setAccent, previewMode, previewAccent } = useTheme();
+  const [pendingMode, setPendingMode] = useState<ThemeMode>(mode);
+  const [pendingAccent, setPendingAccent] = useState<Accent>(accent);
   
   const { data: auditData, isLoading: loadingLogs } = useAuditLogs({ 
     search: user?.name,
     limit: 10 
   });
   const logs = auditData?.logs || [];
+
+  const handleSave = () => {
+    setMode(pendingMode);
+    setAccent(pendingAccent);
+    toast.success("Appearance saved");
+  };
+
+  const handleReset = () => {
+    setPendingMode("system");
+    setPendingAccent("blue");
+    previewMode("system");
+    previewAccent("blue");
+    toast.success("Reset to defaults");
+  };
+
+  const selectMode = (v: ThemeMode) => {
+    setPendingMode(v);
+    previewMode(v);
+  };
+
+  const selectAccent = (v: Accent) => {
+    setPendingAccent(v);
+    previewAccent(v);
+  };
 
   return (
     <div className="space-y-6">
@@ -76,10 +103,10 @@ export function ProfilePage() {
                   ).map((o) => (
                     <button
                       key={o.v}
-                      onClick={() => setMode(o.v)}
+                      onClick={() => selectMode(o.v)}
                       className={cn(
                         "p-4 rounded-lg border-2 transition flex flex-col items-center gap-2",
-                        mode === o.v
+                        pendingMode === o.v
                           ? "border-primary bg-accent text-accent-foreground"
                           : "border-border hover:bg-muted",
                       )}
@@ -97,10 +124,10 @@ export function ProfilePage() {
                   {ACCENTS.map((a) => (
                     <button
                       key={a.value}
-                      onClick={() => setAccent(a.value as Accent)}
+                      onClick={() => selectAccent(a.value as Accent)}
                       className={cn(
                         "p-3 rounded-lg border-2 transition flex flex-col items-center gap-2",
-                        accent === a.value
+                        pendingAccent === a.value
                           ? "border-primary"
                           : "border-border hover:border-muted-foreground",
                       )}
@@ -109,7 +136,7 @@ export function ProfilePage() {
                         className="h-8 w-8 rounded-full flex items-center justify-center"
                         style={{ backgroundColor: `hsl(${a.hsl})` }}
                       >
-                        {accent === a.value && (
+                        {pendingAccent === a.value && (
                           <Check className="h-4 w-4 text-white" />
                         )}
                       </div>
@@ -140,17 +167,14 @@ export function ProfilePage() {
 
               <div className="flex gap-2 pt-2">
                 <Button
-                  onClick={() => toast.success("Appearance saved")}
+                  onClick={handleSave}
                   className="rounded-full"
                 >
                   Save preferences
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    reset();
-                    toast.success("Reset to defaults");
-                  }}
+                  onClick={handleReset}
                   className="rounded-full"
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />

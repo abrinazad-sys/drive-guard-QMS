@@ -9,6 +9,8 @@ interface ThemeCtx {
   resolvedDark: boolean;
   setMode: (m: ThemeMode) => void;
   setAccent: (a: Accent) => void;
+  previewMode: (m: ThemeMode) => void;
+  previewAccent: (a: Accent) => void;
   reset: () => void;
 }
 
@@ -44,9 +46,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setMode = (m: ThemeMode) => { setModeState(m); localStorage.setItem("qms_mode", m); };
   const setAccent = (a: Accent) => { setAccentState(a); localStorage.setItem("qms_accent", a); };
+  const previewMode = (m: ThemeMode) => { setModeState(m); };
+  const previewAccent = (a: Accent) => { setAccentState(a); };
   const reset = () => { setMode("system"); setAccent("blue"); };
 
-  return <ThemeContext.Provider value={{ mode, accent, resolvedDark, setMode, setAccent, reset }}>{children}</ThemeContext.Provider>;
+  return <ThemeContext.Provider value={{ mode, accent, resolvedDark, setMode, setAccent, previewMode, previewAccent, reset }}>{children}</ThemeContext.Provider>;
 }
 
 export const useTheme = () => {
