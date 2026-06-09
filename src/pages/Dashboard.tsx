@@ -52,6 +52,7 @@ function AdminDashboard() {
 
   const { data: auditData, isLoading: loadingLogs } = useAuditLogs({
     limit: 6,
+    targetType: 'FolderPermission',
   });
   const logs = auditData?.logs || [];
 
@@ -124,7 +125,6 @@ function AdminDashboard() {
                     <TableHead>Action</TableHead>
                     <TableHead>Target</TableHead>
                     <TableHead>Folder</TableHead>
-                    <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -149,15 +149,12 @@ function AdminDashboard() {
                         <TableCell className="whitespace-nowrap">
                           {a.folderName || "-"}
                         </TableCell>
-                        <TableCell>
-                          <StatusBadge status="active" />
-                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={5}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No recent activity found.

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { PageHeader, StatusBadge } from "@/components/shared";
+import { PageHeader } from "@/components/shared";
 import { useAuditLogs, type AuditLog } from "@/services/auditService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -146,7 +146,6 @@ export default function Audit() {
                     <TableHead>Action</TableHead>
                     <TableHead>Target</TableHead>
                     {!hideFolderCol && <TableHead>Folder</TableHead>}
-                    <TableHead>Status</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {logs.map(a => (
@@ -158,10 +157,9 @@ export default function Audit() {
                         <TableCell className="whitespace-nowrap">{a.action}</TableCell>
                         <TableCell className="whitespace-nowrap">{a.targetName}</TableCell>
                         {!hideFolderCol && <TableCell className="whitespace-nowrap">{a.folderName || "-"}</TableCell>}
-                        <TableCell><StatusBadge status="active" /></TableCell>
                       </TableRow>
                     ))}
-                    {logs.length === 0 && <TableRow><TableCell colSpan={hideFolderCol ? 5 : 6} className="text-center py-12 text-muted-foreground">No logs match your filters</TableCell></TableRow>}
+                    {logs.length === 0 && <TableRow><TableCell colSpan={hideFolderCol ? 4 : 5} className="text-center py-12 text-muted-foreground">No logs match your filters</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </div>
@@ -208,7 +206,6 @@ export default function Audit() {
               <Row k="IP Address" v={detail.ipAddress} />
               <Row k="Browser" v={detail.userBrowser} />
               <Row k="OS" v={detail.userOS} />
-              <Row k="Status" v={<StatusBadge status="active" />} />
             </dl>
           )}
         </SheetContent>
