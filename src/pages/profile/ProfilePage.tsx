@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sun, Moon, Monitor, Check, RotateCcw, Loader2, Clock, Shield, Globe, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { ProfileForm } from "./forms/ProfileForm";
 import { ChangePasswordForm } from "./forms/ChangePasswordForm";
@@ -26,9 +26,13 @@ import { useAuditLogs } from "@/services/auditService";
 
 export function ProfilePage() {
   const { user } = useAuth();
-  const { mode, accent, setMode, setAccent, previewMode, previewAccent } = useTheme();
+  const { mode, accent, setMode, setAccent, previewMode, previewAccent, clearPreview } = useTheme();
   const [pendingMode, setPendingMode] = useState<ThemeMode>(mode);
   const [pendingAccent, setPendingAccent] = useState<Accent>(accent);
+
+  useEffect(() => {
+    return () => clearPreview();
+  }, [clearPreview]);
   
   const { data: auditData, isLoading: loadingLogs } = useAuditLogs({ 
     search: user?.name,

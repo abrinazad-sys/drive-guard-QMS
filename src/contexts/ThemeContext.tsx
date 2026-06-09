@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 
 export type ThemeMode = "light" | "dark" | "system";
 export type Accent = "blue" | "teal" | "purple" | "green" | "orange" | "rose";
@@ -11,6 +11,7 @@ interface ThemeCtx {
   setAccent: (a: Accent) => void;
   previewMode: (m: ThemeMode) => void;
   previewAccent: (a: Accent) => void;
+  clearPreview: () => void;
   reset: () => void;
 }
 
@@ -48,9 +49,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setAccent = (a: Accent) => { setAccentState(a); localStorage.setItem("qms_accent", a); };
   const previewMode = (m: ThemeMode) => { setModeState(m); };
   const previewAccent = (a: Accent) => { setAccentState(a); };
+  const clearPreview = useCallback(() => {
+    const savedMode = (localStorage.getItem("qms_mode") as ThemeMode) || "system";
+    const savedAccent = (localStorage.getItem("qms_accent") as Accent) || "blue";
+    setModeState(savedMode);
+    setAccentState(savedAccent);
+  }, []);
   const reset = () => { setMode("system"); setAccent("blue"); };
 
-  return <ThemeContext.Provider value={{ mode, accent, resolvedDark, setMode, setAccent, previewMode, previewAccent, reset }}>{children}</ThemeContext.Provider>;
+  return <ThemeContext.Provider value={{ mode, accent, resolvedDark, setMode, setAccent, previewMode, previewAccent, clearPreview, reset }}>{children}</ThemeContext.Provider>;
 }
 
 export const useTheme = () => {
