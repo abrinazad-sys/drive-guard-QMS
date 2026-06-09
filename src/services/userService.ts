@@ -110,6 +110,17 @@ export function useUpdateUserAdmin() {
   });
 }
 
+export function useDeleteUser() {
+  return useMutation<void, AxiosError<ApiErrorResponse>, number>({
+    mutationFn: async (id) => {
+      const { data } = await axios.delete<{ success: boolean }>(`/admin/users/${id}`);
+      if (!data.success) {
+        throw new Error("Failed to delete user");
+      }
+    },
+  });
+}
+
 export function useResetPasswordAdmin() {
   return useMutation<
     { success: boolean; data: { message: string } },

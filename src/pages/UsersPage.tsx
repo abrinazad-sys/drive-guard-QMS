@@ -64,6 +64,7 @@ import {
   useCreateUser,
   useUpdateUserAdmin,
   useResetPasswordAdmin,
+  useDeleteUser,
   type UserDto,
 } from "@/services/userService";
 import { getApiErrorMessage } from "@/services/authService";
@@ -139,6 +140,9 @@ export default function Users() {
   );
   const [tempPassword, setTempPassword] = useState("");
   const resetPasswordMutation = useResetPasswordAdmin();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserDto | null>(null);
+  const deleteUserMutation = useDeleteUser();
 
   // Create form
   const createForm = useForm<CreateUserFormData>({
@@ -282,6 +286,23 @@ export default function Users() {
         },
       },
     );
+  };
+
+  const handleDeleteUser = () => {
+    if (!userToDelete) return;
+    deleteUserMutation.mutate(userToDelete.id, {
+      onSuccess: () => {
+        toast.success("User deleted successfully");
+        setDeleteOpen(false);
+        setUserToDelete(null);
+        refetch();
+      },
+      onError: (err) => {
+        toast.error(getApiErrorMessage(err));
+        setDeleteOpen(false);
+        setUserToDelete(null);
+      },
+    });
   };
 
   const handleResetPassword = () => {
@@ -474,6 +495,16 @@ export default function Users() {
                               }}
                             >
                               {/* {u.isActive ? "Deactivate" : "Activate"} */}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              disabled={u.role === "admin"}
+                              onClick={() => {
+                                setUserToDelete(u);
+                                setDeleteOpen(true);
+                              }}
+                            >
+                              Delete User
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -769,6 +800,36 @@ export default function Users() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{userToDelete?.name}</strong>?
+              This will permanently remove the user from Auth0 and the local database. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setUserToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteUser();
+              }}
+              disabled={deleteUserMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteUserMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              )}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
