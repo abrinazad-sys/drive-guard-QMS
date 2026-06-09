@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { PageHeader, StatusBadge } from "@/components/shared";
 import { type User } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
@@ -31,7 +34,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   Search,
   Plus,
@@ -69,6 +79,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PasswordStrength } from "@/components/ui/password-strength";
+
+const createUserFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
+  emailPrefix: z.string().min(1, "Email is required"),
+  role: z.enum(["admin", "user"]),
+  password: z
+    .string()
+    .min(8, "At least 8 characters")
+    .regex(/[A-Z]/, "Must contain 1 uppercase letter")
+    .regex(/[a-z]/, "Must contain 1 lowercase letter")
+    .regex(/[0-9]/, "Must contain 1 digit")
+    .regex(/[^A-Za-z0-9]/, "Must contain 1 special character"),
+});
+
+type CreateUserFormData = z.infer<typeof createUserFormSchema>;
 
 const StatusToggle = ({
   active,
@@ -114,12 +140,16 @@ export default function Users() {
   const [tempPassword, setTempPassword] = useState("");
   const resetPasswordMutation = useResetPasswordAdmin();
 
-  // Create form state
-  const [newName, setNewName] = useState("");
-  const [newEmailPrefix, setNewEmailPrefix] = useState("");
-  const [newRole, setNewRole] = useState("user");
-  const [newPassword, setNewPassword] = useState("");
-  const [newActive, setNewActive] = useState(true);
+  // Create form
+  const createForm = useForm<CreateUserFormData>({
+    resolver: zodResolver(createUserFormSchema),
+    defaultValues: {
+      name: "",
+      emailPrefix: "",
+      role: "user",
+      password: "",
+    },
+  });
 
   // Edit form state
   const [editName, setEditName] = useState("");
@@ -137,10 +167,10 @@ export default function Users() {
 
   useEffect(() => {
     if (createOpen) {
-      setNewPassword("");
+      createForm.reset();
       setShowPassword(false);
     }
-  }, [createOpen]);
+  }, [createOpen, createForm]);
 
   const filtered = users.filter(
     (u) =>
@@ -151,27 +181,21 @@ export default function Users() {
         (statusFilter === "active" ? u.isActive : !u.isActive)),
   );
 
-  const handleCreate = () => {
-    if (!newName || !newEmailPrefix || !newRole) {
-      toast.error("Please fill all required fields");
-      return;
-    }
-    const fullEmail = `${newEmailPrefix}@bedatasolutions.com`;
+  const handleCreate = (data: CreateUserFormData) => {
+    const fullEmail = `${data.emailPrefix}@bedatasolutions.com`;
     createUserMutation.mutate(
       {
-        name: newName,
+        name: data.name,
         email: fullEmail,
-        role: newRole,
-        password: newPassword || undefined,
+        role: data.role,
+        password: data.password,
       },
       {
         onSuccess: () => {
           toast.success("User created successfully");
           setCreateOpen(false);
           refetch();
-          setNewName("");
-          setNewEmailPrefix("");
-          setNewPassword("");
+          createForm.reset();
         },
         onError: (err) => toast.error(getApiErrorMessage(err)),
       },
@@ -477,107 +501,128 @@ export default function Users() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">Create User</DialogTitle>
-            {/* <DialogDescription>Add a new user to QMS</DialogDescription> */}
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="new-user-name">Full name</Label>
-              <Input
-                id="new-user-name"
-                name="new-user-name"
-                placeholder="Jane Doe"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                autoComplete="off"
+          <Form {...createForm}>
+            <form onSubmit={createForm.handleSubmit(handleCreate)} className="space-y-3">
+              <FormField
+                control={createForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Jane Doe" autoComplete="off" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="new-user-email">Email</Label>
-              <div className="relative">
-                <Input
-                  id="new-user-email"
-                  name="new-user-email"
-                  placeholder="jane.doe"
-                  value={newEmailPrefix}
-                  onChange={(e) => setNewEmailPrefix(e.target.value)}
-                  className="pr-[165px]"
-                  autoComplete="off"
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none select-none">
-                  @bedatasolutions.com
-                </div>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Role</Label>
-              <Select value={newRole} onValueChange={setNewRole}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="new-user-password">Initial password</Label>
-                <button
-                  type="button"
-                  onClick={() => setNewPassword(generateStrongPassword())}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+              <FormField
+                control={createForm.control}
+                name="emailPrefix"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          placeholder="jane.doe"
+                          autoComplete="off"
+                          className="pr-[165px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none select-none">
+                        @bedatasolutions.com
+                      </div>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createForm.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="user">User</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between gap-3">
+                      <FormLabel>Initial password</FormLabel>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          createForm.setValue("password", generateStrongPassword(), {
+                            shouldValidate: true,
+                          })
+                        }
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                      >
+                        Generate strong pass
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          autoComplete="new-password"
+                          className="pr-10"
+                          {...field}
+                        />
+                      </FormControl>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    <FormMessage />
+                    <PasswordStrength password={field.value} />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCreateOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createUserMutation.isPending}
                 >
-                  Generate strong pass
-                </button>
-              </div>
-              <div className="relative">
-                <Input
-                  id="new-user-password"
-                  name="new-user-password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="pr-10"
-                  autoComplete="new-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
+                  {createUserMutation.isPending && (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   )}
-                </button>
-              </div>
-            </div>
-            {/* <label className="flex items-center gap-2 text-sm">
-              <Checkbox defaultChecked />
-              Force password reset on first login
-            </label>
-            <label className="flex items-center justify-between text-sm">
-              <span>Active</span>
-              <Switch checked={newActive} onCheckedChange={setNewActive} />
-            </label> */}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreate}
-              disabled={createUserMutation.isPending}
-            >
-              {createUserMutation.isPending && (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              )}
-              Create User
-            </Button>
-          </DialogFooter>
+                  Create User
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
