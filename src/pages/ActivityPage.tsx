@@ -118,23 +118,23 @@ export default function ActivityPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Action</TableHead>
-                      {!isFileMode && <TableHead>Action By</TableHead>}
+                        <TableHead>{isFileMode ? 'Action' : 'Action By'}</TableHead>
+                      {!isFileMode && <TableHead>Action</TableHead>}
                       {!isFileMode && <TableHead>FolderName</TableHead>}
                       {isFileMode && <TableHead>Details</TableHead>}
-                      <TableHead>Status</TableHead>
+                      <TableHead>Time</TableHead>
+                      {!isFileMode && <TableHead>Device</TableHead>}
+                      {isFileMode && <TableHead>Device</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {logs.map((entry: any) => (
                       <TableRow key={entry._kind === "file_access" ? `f-${entry.id}` : `a-${entry.id}`}>
-                        <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
-                          {new Date(entry.createdAt).toLocaleString([], {
-                            dateStyle: "short",
-                            timeStyle: "short",
-                          })}
-                        </TableCell>
+                        {!isFileMode && (
+                          <TableCell className="whitespace-nowrap">
+                            {entry.adminName}
+                          </TableCell>
+                        )}
                         <TableCell className="whitespace-nowrap">
                           {entry._kind === "file_access" ? (
                             <span className="flex items-center gap-1">
@@ -151,11 +151,6 @@ export default function ActivityPage() {
                         </TableCell>
                         {!isFileMode && (
                           <TableCell className="whitespace-nowrap">
-                            {entry.adminName}
-                          </TableCell>
-                        )}
-                        {!isFileMode && (
-                          <TableCell className="whitespace-nowrap">
                             {entry.folderName}
                           </TableCell>
                         )}
@@ -164,8 +159,14 @@ export default function ActivityPage() {
                             {entry.fileName}
                           </TableCell>
                         )}
+                        <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                          {new Date(entry.createdAt).toLocaleString([], {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          })}
+                        </TableCell>
                         <TableCell>
-                          <StatusBadge status="active" />
+                          {entry.userOS}
                         </TableCell>
                       </TableRow>
                     ))}

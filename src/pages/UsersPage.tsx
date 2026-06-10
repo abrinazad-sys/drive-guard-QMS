@@ -60,13 +60,21 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import {
-  useAdminUsers,
+  useAdminUsersPaginated,
   useCreateUser,
   useUpdateUserAdmin,
   useResetPasswordAdmin,
   useDeleteUser,
   type UserDto,
 } from "@/services/userService";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { getApiErrorMessage } from "@/services/authService";
 import { cn } from "@/lib/utils";
 import { exportToPdf } from "@/utils/exportPdf";
@@ -125,9 +133,13 @@ const StatusToggle = ({
 );
 
 export default function Users() {
-  const { data: users = [], isLoading, refetch } = useAdminUsers();
-  const createUserMutation = useCreateUser();
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const { data: paginated, isLoading, refetch } = useAdminUsersPaginated(page, 10, search);
+  const users = paginated?.users ?? [];
+  const total = paginated?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / 10));
+  const createUserMutation = useCreateUser();
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -178,12 +190,15 @@ export default function Users() {
 
   const filtered = users.filter(
     (u) =>
-      (u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase())) &&
       (roleFilter === "all" || u.role === roleFilter) &&
       (statusFilter === "all" ||
         (statusFilter === "active" ? u.isActive : !u.isActive)),
   );
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
 
   const handleCreate = (data: CreateUserFormData) => {
     const fullEmail = `${data.emailPrefix}@bedatasolutions.com`;
@@ -374,7 +389,7 @@ export default function Users() {
                 name="users-search"
                 placeholder="Search users by name or email..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-9"
                 autoComplete="off"
               />
@@ -525,6 +540,37 @@ export default function Users() {
               </Table>
             )}
           </div>
+          {!isLoading && totalPages > 1 && (
+            <div className="mt-4">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={(e) => { e.preventDefault(); setPage((p) => Math.max(1, p - 1)); }}
+                      className={page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <PaginationItem key={p}>
+                      <PaginationLink
+                        onClick={(e) => { e.preventDefault(); setPage(p); }}
+                        isActive={p === page}
+                        className="cursor-pointer"
+                      >
+                        {p}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={(e) => { e.preventDefault(); setPage((p) => Math.min(totalPages, p + 1)); }}
+                      className={page >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -44,6 +44,21 @@ export function useAdminUsers() {
   });
 }
 
+export function useAdminUsersPaginated(page: number, limit: number, search?: string) {
+  return useQuery<{ users: UserDto[]; total: number }, AxiosError<ApiErrorResponse>>({
+    queryKey: ["admin-users-paginated", page, limit, search],
+    queryFn: async () => {
+      const params: Record<string, string | number> = { page, limit };
+      if (search) params.search = search;
+      const { data } = await axios.get<AdminUsersResponse>("/admin/users", { params });
+      if (!data.success) {
+        throw new Error("Failed to fetch users");
+      }
+      return { users: data.data.users, total: data.data.total };
+    },
+  });
+}
+
 export interface CreateUserRequest {
   email: string;
   name: string;

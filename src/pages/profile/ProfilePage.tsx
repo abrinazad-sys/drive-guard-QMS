@@ -75,7 +75,7 @@ export function ProfilePage() {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="info">Profile</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
+          {/* <TabsTrigger value="activity">Activity</TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="info" className="mt-4">

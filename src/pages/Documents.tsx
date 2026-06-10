@@ -87,36 +87,12 @@ export default function Documents() {
       },
       {
         onSuccess: () => {
-          // Audit Log
-          // selectedUserIds.forEach(userId => {
-          //   const user = (grantPermissionFolder ? usersWithoutAccess : allUsers).find(u => u.id === userId);
-          //   auditService.addLog({
-          //     actor: "Admin",
-          //     role: "admin",
-          //     action: "Granted access",
-          //     target: user?.name || `User ${userId}`,
-          //     folder: grantPermissionFolder.name,
-          //     status: "active"
-          //   });
-          // });
 
           toast.success("Permissions granted successfully");
           setGrantPermissionFolder(null);
           setSelectedUserIds([]);
         },
         onError: () => {
-          // Audit Log
-          // selectedUserIds.forEach(userId => {
-          //   const user = allUsers.find(u => u.id === userId);
-          //   auditService.addLog({
-          //     actor: "Admin",
-          //     role: "admin",
-          //     action: "Granted access",
-          //     target: user?.name || `User ${userId}`,
-          //     folder: grantPermissionFolder.name,
-          //     status: "deactive"
-          //   });
-          // });
         }
       },
     );
@@ -182,6 +158,7 @@ export default function Documents() {
                 {filteredFolders.map(f => (
                   <div key={f.id} className="relative group">
                     <div
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => setCurrentFolderId(f.id)}
                       className="p-4 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent transition cursor-pointer"
                     >

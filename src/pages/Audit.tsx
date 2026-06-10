@@ -69,10 +69,12 @@ export default function Audit() {
         <>
           <Button variant="outline" onClick={() => {
             if (logs.length === 0) { toast.error("No logs to export"); return; }
-            const header = hideFolderCol ? "Time,Admin,Action,Target,IP" : "Time,Admin,Action,Target,Folder,IP";
+            const header = hideFolderCol ? "Admin, Action, Target User, Time, Device, IP" : "Admin, Action, Target User, Folder Name, Time, Device, IP";
             const csvRows = logs.map(a => {
-              const base = [new Date(a.createdAt).toLocaleString(), a.adminName, a.action, a.targetName];
+              const base = [a.adminName, a.action, a.targetName];
               if (!hideFolderCol) base.push(a.folderName || "");
+              base.push(new Date(a.createdAt).toLocaleString());
+              base.push(a.userOS);
               base.push(a.ipAddress);
               return base.map(v => `"${v}"`).join(",");
             });
@@ -90,15 +92,16 @@ export default function Audit() {
             exportToPdf({
               title: "Audit Logs",
               subtitle: `${logs.length} entries \u00b7 Generated ${new Date().toLocaleString()}`,
-              columns: hideFolderCol ? ["Time", "Admin", "Action", "Target"] : ["Time", "Admin", "Action", "Target", "Folder"],
+              columns: hideFolderCol ? ["Admin", "Action", "Target User", "Time", "Device"] : ["Admin", "Action", "Target User", "Folder Name", "Time", "Device"],
               rows: logs.map(a => {
                 const row = [
-                  new Date(a.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" }),
                   a.adminName,
                   a.action,
                   a.targetName,
                 ];
                 if (!hideFolderCol) row.push(a.folderName || "-");
+                row.push(new Date(a.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" }));
+                row.push(a.userOS);
                 return row;
               }),
               filename: `audit_logs_${new Date().toISOString().slice(0, 10)}.pdf`,
@@ -141,22 +144,24 @@ export default function Audit() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead>Time</TableHead>
                     <TableHead>Admin</TableHead>
                     <TableHead>Action</TableHead>
-                    <TableHead>Target</TableHead>
-                    {!hideFolderCol && <TableHead>Folder</TableHead>}
+                    <TableHead>Target User</TableHead>
+                    {!hideFolderCol && <TableHead>Folder Name</TableHead>}
+                    <TableHead>Time</TableHead>
+                    <TableHead>Device</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {logs.map(a => (
                       <TableRow key={a.id} className="cursor-pointer" onClick={() => setDetail(a)}>
-                        <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
-                          {new Date(a.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                        </TableCell>
                         <TableCell className="font-medium whitespace-nowrap">{a.adminName}</TableCell>
                         <TableCell className="whitespace-nowrap">{a.action}</TableCell>
                         <TableCell className="whitespace-nowrap">{a.targetName}</TableCell>
                         {!hideFolderCol && <TableCell className="whitespace-nowrap">{a.folderName || "-"}</TableCell>}
+                        <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                          {new Date(a.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">{a.userOS}</TableCell>
                       </TableRow>
                     ))}
                     {logs.length === 0 && <TableRow><TableCell colSpan={hideFolderCol ? 4 : 5} className="text-center py-12 text-muted-foreground">No logs match your filters</TableCell></TableRow>}
