@@ -25,6 +25,7 @@ import type { FileDto, FolderDto } from "@/dto/FolderDto";
 export default function Documents() {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [crumbs, setCrumbs] = useState<{ id: string | null; name: string }[]>([{ id: null, name: 'Home' }]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [accessPanelFolder, setAccessPanelFolder] = useState<FolderDto | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -169,11 +170,12 @@ export default function Documents() {
                 {filteredFolders.map(f => (
                   <div key={f.id} className="relative group">
                     <div
-                      onClick={() => {
+                      onClick={() => setSelectedId(selectedId === f.id ? null : f.id)}
+                      onDoubleClick={() => {
                         setCurrentFolderId(f.id);
                         setCrumbs(prev => [...prev, { id: f.id, name: f.name }]);
                       }}
-                      className="p-4 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent transition cursor-pointer select-none"
+                      className={`p-4 rounded-xl border cursor-pointer select-none transition ${selectedId === f.id ? 'border-primary ring-2 ring-primary/30' : 'border-border bg-card hover:border-primary hover:bg-accent'}`}
                     >
                       <div className="flex items-start gap-3">
                         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -212,13 +214,18 @@ export default function Documents() {
             {filteredFiles.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredFiles.map(f => (
-                  <Card key={f.id} className="p-4 hover:border-primary transition select-none">
+                  <Card
+                    key={f.id}
+                    className={`p-4 transition select-none cursor-pointer ${selectedId === f.id ? 'border-primary ring-2 ring-primary/30' : 'hover:border-primary'}`}
+                    onClick={() => setSelectedId(selectedId === f.id ? null : f.id)}
+                    onDoubleClick={() => setDetailFile(f)}
+                  >
                     <div className="flex items-start gap-3">
                       <FileIcon type={f.extension} />
                       <div className="flex-1 min-w-0">
-                        <button onClick={() => setDetailFile(f)} className="font-medium truncate text-left hover:text-primary block w-full">{f.name}</button>
+                        <button onClick={(e) => { e.stopPropagation(); setDetailFile(f); }} onDoubleClick={(e) => e.stopPropagation()} className="font-medium truncate text-left hover:text-primary block w-full">{f.name}</button>
                         <div className="text-xs text-muted-foreground mt-0.5">{f.size} · {new Date(f.modifiedAt).toLocaleDateString()}</div>
-                        <div className="flex items-center gap-1 mt-3">
+                        <div className="flex items-center gap-1 mt-3" onClick={(e) => e.stopPropagation()}>
                           <Button size="sm" variant="outline" onClick={() => { logFileAccess(f.id, f.name, "preview"); setPreviewFile(f); }}><Eye className="h-3 w-3 mr-1" />Preview</Button>
                           <Button size="sm" variant="outline" onClick={() => handleDownload(f.id, f.name)} disabled={downloading === f.id}>
                             {downloading === f.id ? <Loader2 className="h-3 w-3 animate-spin" /> : downloaded === f.id ? <Check className="h-3 w-3 text-green-600" /> : <Download className="h-3 w-3" />}
