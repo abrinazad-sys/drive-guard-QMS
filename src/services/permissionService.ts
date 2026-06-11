@@ -130,6 +130,7 @@ export interface UserPermissionsResponse {
       folderId: string;
       grantedAt: string;
       grantedBy: string;
+      folderName: string;
     }[];
   };
 }

@@ -97,20 +97,20 @@ export default function Permissions() {
       await Promise.all(promises);
 
       // Audit Log
-      selectedUsers.forEach(userId => {
-        const user = allUsers.find(u => u.id === userId);
-        selectedFolders.forEach(fid => {
-          const folderName = allFolders.find(f => f.id === fid)?.name;
-          auditService.addLog({
-            actor: "Admin", // Should ideally be from AuthContext
-            role: "admin",
-            action: "Granted access",
-            target: user?.name || `User ${userId}`,
-            folder: folderName || "Unknown Folder",
-            status: "active"
-          });
-        });
-      });
+      // selectedUsers.forEach(userId => {
+      //   const user = allUsers.find(u => u.id === userId);
+      //   selectedFolders.forEach(fid => {
+      //     const folderName = allFolders.find(f => f.id === fid)?.name;
+      //     auditService.addLog({
+      //       actor: "Admin", // Should ideally be from AuthContext
+      //       role: "admin",
+      //       action: "Granted access",
+      //       target: user?.name || `User ${userId}`,
+      //       folder: folderName || "Unknown Folder",
+      //       status: "active"
+      //     });
+      //   });
+      // });
 
       toast.success(
         `Access granted to ${selectedUsers.length} user${selectedUsers.length > 1 ? "s" : ""} for ${selectedFolders.length} folder${selectedFolders.length > 1 ? "s" : ""}`
@@ -120,21 +120,7 @@ export default function Permissions() {
       setSelectedUsers([]);
       setSelectedFolders([]);
     } catch (error) {
-      // Audit Log for failure
-      selectedUsers.forEach(userId => {
-        const user = allUsers.find(u => u.id === userId);
-        selectedFolders.forEach(fid => {
-          const folderName = allFolders.find(f => f.id === fid)?.name;
-          auditService.addLog({
-            actor: "Admin",
-            role: "admin",
-            action: "Granted access",
-            target: user?.name || `User ${userId}`,
-            folder: folderName || "Unknown Folder",
-            status: "deactive"
-          });
-        });
-      });
+      console.log("Error : ", error)
     }
   };
   const revoke = async () => {
@@ -150,22 +136,6 @@ export default function Permissions() {
 
       await Promise.all(promises);
 
-      // Audit Log
-      selectedUsers.forEach(userId => {
-        const user = allUsers.find(u => u.id === userId);
-        selectedFolders.forEach(fid => {
-          const folderName = allFolders.find(f => f.id === fid)?.name;
-          auditService.addLog({
-            actor: "Admin",
-            role: "admin",
-            action: "Revoked access",
-            target: user?.name || `User ${userId}`,
-            folder: folderName || "Unknown Folder",
-            status: "active"
-          });
-        });
-      });
-
       toast.success(
         `Access revoked from ${selectedUsers.length} user${selectedUsers.length > 1 ? "s" : ""} for ${selectedFolders.length} folder${selectedFolders.length > 1 ? "s" : ""}`
       );
@@ -174,21 +144,7 @@ export default function Permissions() {
       setSelectedUsers([]);
       setSelectedFolders([]);
     } catch (error) {
-      // Audit Log for failure
-      selectedUsers.forEach(userId => {
-        const user = allUsers.find(u => u.id === userId);
-        selectedFolders.forEach(fid => {
-          const folderName = allFolders.find(f => f.id === fid)?.name;
-          auditService.addLog({
-            actor: "Admin",
-            role: "admin",
-            action: "Revoked access",
-            target: user?.name || `User ${userId}`,
-            folder: folderName || "Unknown Folder",
-            status: "deactive"
-          });
-        });
-      });
+      console.log("Error ", error)
     }
   };
 
@@ -554,7 +510,6 @@ export default function Permissions() {
                     ) : userPermissionsData?.permissions && userPermissionsData.permissions.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {userPermissionsData.permissions.map((perm) => {
-                          const folder = allFolders.find(f => f.id === perm.folderId);
                           return (
                             <Card key={perm.permissionId} className="group hover:border-primary/30 transition-colors">
                               <CardContent className="p-4 flex items-center justify-between">
@@ -563,7 +518,7 @@ export default function Permissions() {
                                     <FolderOpen className="h-5 w-5 text-primary" />
                                   </div>
                                   <div className="min-w-0">
-                                    <div className="text-sm font-medium truncate">{folder?.name || "Unknown Folder"}</div>
+                                    <div className="text-sm font-medium truncate">{perm?.folderName || "Unknown Folder"}</div>
                                     <div className="text-[10px] text-muted-foreground">Granted on {new Date(perm.grantedAt).toLocaleDateString()}</div>
                                   </div>
                                 </div>
@@ -577,30 +532,11 @@ export default function Permissions() {
                                       { folderId: perm.folderId, userId: activeUserSearchId },
                                       {
                                         onSuccess: () => {
-                                          const user = employees.find(u => u.id === activeUserSearchId);
-                                          const folder = allFolders.find(f => f.id === perm.folderId);
-                                          auditService.addLog({
-                                            actor: "Admin",
-                                            role: "admin",
-                                            action: "Revoked access",
-                                            target: user?.name || `User ${activeUserSearchId}`,
-                                            folder: folder?.name || "Unknown Folder",
-                                            status: "active"
-                                          });
                                           toast.success("Access removed successfully");
                                           refetchUserPermissions();
                                         },
                                         onError: () => {
-                                          const user = employees.find(u => u.id === activeUserSearchId);
-                                          const folder = allFolders.find(f => f.id === perm.folderId);
-                                          auditService.addLog({
-                                            actor: "Admin",
-                                            role: "admin",
-                                            action: "Revoked access",
-                                            target: user?.name || `User ${activeUserSearchId}`,
-                                            folder: folder?.name || "Unknown Folder",
-                                            status: "deactive"
-                                          });
+                                          toast.error("Failed to remove access");
                                         }
                                       }
                                     );
