@@ -438,9 +438,9 @@ export default function Documents() {
                         }
                       );
                     }}
-                    disabled={revokingUserId === perm.user.id}
+                    disabled={revokingUserId === perm.user.id || perm.user.role === 'admin'}
                     className="text-muted-foreground hover:text-destructive p-2 rounded-lg transition-colors disabled:opacity-50"
-                    title="Remove access"
+                    title={perm.user.role === 'admin' ? "Admins cannot be removed" : "Remove access"}
                   >
                     {revokingUserId === perm.user.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
