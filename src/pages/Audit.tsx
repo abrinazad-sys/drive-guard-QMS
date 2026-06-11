@@ -92,7 +92,7 @@ export default function Audit() {
             exportToPdf({
               title: "Audit Logs",
               subtitle: `${logs.length} entries \u00b7 Generated ${new Date().toLocaleString()}`,
-              columns: hideFolderCol ? ["Admin", "Action", "Target User", "Time", "Device"] : ["Admin", "Action", "Target User", "Folder Name", "Time", "Device"],
+              columns: hideFolderCol ? ["Admin", "Action", "Target User", "Time", "Device", "IP"] : ["Admin", "Action", "Target User", "Folder Name", "Time", "Device", "IP"],
               rows: logs.map(a => {
                 const row = [
                   a.adminName,
@@ -102,6 +102,7 @@ export default function Audit() {
                 if (!hideFolderCol) row.push(a.folderName || "-");
                 row.push(new Date(a.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" }));
                 row.push(a.userOS);
+                row.push(a.ipAddress);
                 return row;
               }),
               filename: `audit_logs_${new Date().toISOString().slice(0, 10)}.pdf`,
@@ -150,6 +151,7 @@ export default function Audit() {
                     {!hideFolderCol && <TableHead>Folder Name</TableHead>}
                     <TableHead>Time</TableHead>
                     <TableHead>Device</TableHead>
+                    <TableHead>IP</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {logs.map(a => (
@@ -162,6 +164,7 @@ export default function Audit() {
                           {new Date(a.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">{a.userOS}</TableCell>
+                        <TableCell className="whitespace-nowrap">{a.ipAddress}</TableCell>
                       </TableRow>
                     ))}
                     {logs.length === 0 && <TableRow><TableCell colSpan={hideFolderCol ? 4 : 5} className="text-center py-12 text-muted-foreground">No logs match your filters</TableCell></TableRow>}

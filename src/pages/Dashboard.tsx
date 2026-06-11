@@ -171,7 +171,7 @@ function AdminDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Cloud className="h-4 w-4 text-primary" />
-                Drive Connection
+                Sync Drive Permissions
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">

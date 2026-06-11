@@ -123,8 +123,8 @@ export default function ActivityPage() {
                       {!isFileMode && <TableHead>FolderName</TableHead>}
                       {isFileMode && <TableHead>Details</TableHead>}
                       <TableHead>Time</TableHead>
-                      {!isFileMode && <TableHead>Device</TableHead>}
-                      {isFileMode && <TableHead>Device</TableHead>}
+                      <TableHead>Device</TableHead>
+                      <TableHead>IP</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -167,6 +167,9 @@ export default function ActivityPage() {
                         </TableCell>
                         <TableCell>
                           {entry.userOS}
+                        </TableCell>
+                        <TableCell>
+                          {entry.ipAddress}
                         </TableCell>
                       </TableRow>
                     ))}
