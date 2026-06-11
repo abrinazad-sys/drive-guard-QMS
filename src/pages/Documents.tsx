@@ -24,6 +24,7 @@ import type { FileDto, FolderDto } from "@/dto/FolderDto";
 
 export default function Documents() {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [crumbs, setCrumbs] = useState<{ id: string | null; name: string }[]>([{ id: null, name: 'Home' }]);
   const [accessPanelFolder, setAccessPanelFolder] = useState<FolderDto | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -105,16 +106,22 @@ export default function Documents() {
       <div className={`space-y-6 transition-opacity duration-200 ${accessPanelFolder ? "opacity-40" : "opacity-100"}`}>
         <PageHeader title="Documents" description="Browse folders and files synced from Google Drive." />
 
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <button onClick={() => setCurrentFolderId(null)} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
-            <FolderOpen className="h-4 w-4" />Home
-          </button>
-          {currentFolderId && (
-            <>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium text-primary">Current Folder</span>
-            </>
-          )}
+        <div className="flex flex-wrap items-center gap-1 text-sm">
+          {crumbs.map((crumb, i) => (
+            <div key={crumb.id ?? 'home'} className="flex items-center gap-1">
+              {i > 0 && <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+              <button
+                onClick={() => {
+                  setCurrentFolderId(crumb.id);
+                  setCrumbs(prev => prev.slice(0, i + 1));
+                }}
+                className={`${i === crumbs.length - 1 ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground'} flex items-center gap-1 transition`}
+              >
+                {i === 0 && <FolderOpen className="h-4 w-4" />}
+                {crumb.name}
+              </button>
+            </div>
+          ))}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
@@ -124,7 +131,7 @@ export default function Documents() {
           </div>
           {currentFolderId && (
             <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-44 select-none"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All file types</SelectItem>
                 <SelectItem value="pdf">PDF</SelectItem>
@@ -133,7 +140,11 @@ export default function Documents() {
               </SelectContent>
             </Select>
           )}
-          {currentFolderId && <Button variant="outline" onClick={() => setCurrentFolderId(null)}><ArrowLeft className="h-4 w-4 mr-2" />Back</Button>}
+          {currentFolderId && <Button variant="outline" onClick={() => {
+  const parentId = folderContents?.parentId ?? null;
+  setCurrentFolderId(parentId);
+  setCrumbs(prev => parentId === null ? [{ id: null, name: 'Home' }] : prev.slice(0, -1));
+}}><ArrowLeft className="h-4 w-4 mr-2 select-none" />Back</Button>}
           {currentFolderId && isAdmin && (
             <Button
               variant="outline"
@@ -158,9 +169,11 @@ export default function Documents() {
                 {filteredFolders.map(f => (
                   <div key={f.id} className="relative group">
                     <div
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => setCurrentFolderId(f.id)}
-                      className="p-4 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent transition cursor-pointer"
+                      onClick={() => {
+                        setCurrentFolderId(f.id);
+                        setCrumbs(prev => [...prev, { id: f.id, name: f.name }]);
+                      }}
+                      className="p-4 rounded-xl border border-border bg-card hover:border-primary hover:bg-accent transition cursor-pointer select-none"
                     >
                       <div className="flex items-start gap-3">
                         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -199,7 +212,7 @@ export default function Documents() {
             {filteredFiles.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredFiles.map(f => (
-                  <Card key={f.id} className="p-4 hover:border-primary transition">
+                  <Card key={f.id} className="p-4 hover:border-primary transition select-none">
                     <div className="flex items-start gap-3">
                       <FileIcon type={f.extension} />
                       <div className="flex-1 min-w-0">
