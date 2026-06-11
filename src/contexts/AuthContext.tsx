@@ -78,7 +78,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.clear();
+    localStorage.removeItem("token");
+    localStorage.removeItem("USER");
+    localStorage.removeItem("passwordChangeRequired");
     setUser(null);
   };
   const completeReset = () => {
