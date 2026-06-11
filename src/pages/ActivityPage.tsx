@@ -34,7 +34,7 @@ export default function ActivityPage() {
   const [auditCursor, setAuditCursor] = useState<number | undefined>(undefined);
   const [auditCursorHistory, setAuditCursorHistory] = useState<(number | undefined)[]>([]);
 
-  const limit = 10;
+  const limit = 15;
 
   const isFileMode = type === "activity";
 

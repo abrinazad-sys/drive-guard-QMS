@@ -51,6 +51,8 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -67,14 +69,7 @@ import {
   useDeleteUser,
   type UserDto,
 } from "@/services/userService";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+
 import { getApiErrorMessage } from "@/services/authService";
 import { cn } from "@/lib/utils";
 import { exportToPdf } from "@/utils/exportPdf";
@@ -135,7 +130,7 @@ const StatusToggle = ({
 export default function Users() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const { data: paginated, isLoading, refetch } = useAdminUsersPaginated(page, 10, search);
+  const { data: paginated, isLoading, refetch } = useAdminUsersPaginated(page, 15, search);
   const users = paginated?.users ?? [];
   const total = paginated?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / 10));
@@ -541,34 +536,28 @@ export default function Users() {
             )}
           </div>
           {!isLoading && totalPages > 1 && (
-            <div className="mt-4">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={(e) => { e.preventDefault(); setPage((p) => Math.max(1, p - 1)); }}
-                      className={page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    />
-                  </PaginationItem>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <PaginationItem key={p}>
-                      <PaginationLink
-                        onClick={(e) => { e.preventDefault(); setPage(p); }}
-                        isActive={p === page}
-                        className="cursor-pointer"
-                      >
-                        {p}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={(e) => { e.preventDefault(); setPage((p) => Math.min(totalPages, p + 1)); }}
-                      className={page >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-muted-foreground">
+                Showing {users.length} of {total} users
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
