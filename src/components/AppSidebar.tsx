@@ -136,7 +136,7 @@ export function AppSidebar() {
                     src={user?.profilePhotoUrl || undefined}
                     alt={user?.name ?? "User"}
                   />
-                  <AvatarFallback>{initials}</AvatarFallback>
+                  <AvatarFallback className="flex items-center justify-center h-full w-full">{initials}</AvatarFallback>
                 </Avatar>
               </Button>
             </div>
@@ -152,7 +152,7 @@ export function AppSidebar() {
                       src={user?.profilePhotoUrl || undefined}
                       alt={user?.name ?? "User"}
                     />
-                    <AvatarFallback>{initials}</AvatarFallback>
+                    <AvatarFallback className="flex items-center justify-center h-full w-full">{initials}</AvatarFallback>
                   </Avatar>
                 </div>
                 <div className="flex flex-col min-w-0">
