@@ -23,6 +23,8 @@ export interface LoginResponse {
       isActive: boolean;
       passwordChangeRequired: boolean;
       profilePhotoUrl?: string | null;
+      themeMode: string;
+      themeAccent: string;
     };
   };
 }

@@ -25,7 +25,7 @@ import { ChangePasswordForm } from "./forms/ChangePasswordForm";
 import { useAuditLogs } from "@/services/auditService";
 
 export function ProfilePage() {
-  const { user } = useAuth();
+  const { user, updateThemePreferences } = useAuth();
   const { mode, accent, setMode, setAccent, previewMode, previewAccent, clearPreview } = useTheme();
   const [pendingMode, setPendingMode] = useState<ThemeMode>(mode);
   const [pendingAccent, setPendingAccent] = useState<Accent>(accent);
@@ -43,6 +43,7 @@ export function ProfilePage() {
   const handleSave = () => {
     setMode(pendingMode);
     setAccent(pendingAccent);
+    updateThemePreferences(pendingMode, pendingAccent);
     toast.success("Appearance saved");
   };
 

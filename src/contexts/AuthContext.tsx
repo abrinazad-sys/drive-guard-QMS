@@ -7,7 +7,6 @@ import {
 } from "react";
 import { loginApi } from "@/services/authService";
 import createAxiosInstance from "@/config/axios-config";
-import type { Role } from "@/lib/mock-data";
 
 const axios = createAxiosInstance(import.meta.env.VITE_BASE_URL ?? "");
 
@@ -18,6 +17,8 @@ export interface AuthUser {
   role: string;
   passwordChangeRequired?: boolean;
   profilePhotoUrl?: string | null;
+  themeMode?: string;
+  themeAccent?: string;
 }
 
 interface AuthCtx {
@@ -30,6 +31,7 @@ interface AuthCtx {
   completeReset: () => void;
   mustReset: boolean;
   updateProfile: (name: string, photo?: File) => Promise<AuthUser>;
+  updateThemePreferences: (themeMode: string, themeAccent: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -61,12 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await loginApi(email, password);
       if (response.success && response.data) {
+        const u = response.data.user;
         localStorage.setItem("token", response.data.accessToken);
-        setUser(response.data.user);
-        setMustReset(response.data.user.passwordChangeRequired);
+        localStorage.setItem("qms_mode", u.themeMode || "system");
+        localStorage.setItem("qms_accent", u.themeAccent || "blue");
+        setUser(u);
+        setMustReset(u.passwordChangeRequired);
         return {
           success: true,
-          mustReset: response.data.user.passwordChangeRequired,
+          mustReset: u.passwordChangeRequired,
         };
       }
       return { success: false, error: "Login failed." };
@@ -81,6 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("token");
     localStorage.removeItem("USER");
     localStorage.removeItem("passwordChangeRequired");
+    localStorage.removeItem("qms_mode");
+    localStorage.removeItem("qms_accent");
     setUser(null);
   };
   const completeReset = () => {
@@ -117,9 +124,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return updatedUser;
   };
 
+  const updateThemePreferences = async (themeMode: string, themeAccent: string) => {
+    const formData = new FormData();
+    formData.append("themeMode", themeMode);
+    formData.append("themeAccent", themeAccent);
+    const { data } = await axios.patch("/auth/me", formData);
+    if (!data.success) {
+      throw new Error(data.message || "Failed to update theme preferences");
+    }
+    setUser((prev) => prev ? { ...prev, themeMode, themeAccent } : prev);
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, mustReset, completeReset, updateProfile }}
+      value={{ user, login, logout, mustReset, completeReset, updateProfile, updateThemePreferences }}
     >
       {children}
     </AuthContext.Provider>

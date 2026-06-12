@@ -1,4 +1,5 @@
 import { Outlet, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Bell, Moon, Sun, Monitor } from "lucide-react";
@@ -12,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme, type ThemeMode, type Accent } from "@/contexts/ThemeContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { notifications as allNotifs } from "@/lib/mock-data";
@@ -20,8 +21,17 @@ import { ChangePasswordModal } from "@/pages/profile/forms/ChangePasswordModal";
 import { cn } from "@/lib/utils";
 
 export default function AppLayout() {
-  const { user, logout, mustReset, completeReset } = useAuth();
-  const { mode, setMode, resolvedDark } = useTheme();
+  const { user, logout, mustReset, completeReset, updateThemePreferences } = useAuth();
+  const { mode, setMode, setAccent, accent, resolvedDark } = useTheme();
+
+  useEffect(() => {
+    if (user?.themeMode) {
+      setMode(user.themeMode as ThemeMode);
+    }
+    if (user?.themeAccent) {
+      setAccent(user.themeAccent as Accent);
+    }
+  }, []);
   const navigate = useNavigate();
   const notifs = user?.role === "admin" ? allNotifs.admin : allNotifs.user;
   const unread = notifs.filter((n) => !n.read).length;
@@ -67,15 +77,15 @@ export default function AppLayout() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Theme</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => setMode("light")}>
+                    <DropdownMenuItem onClick={() => { setMode("light"); updateThemePreferences("light", accent); }}>
                       <Sun className="h-4 w-4 mr-2" />
                       Light {mode === "light" && "✓"}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setMode("dark")}>
+                    <DropdownMenuItem onClick={() => { setMode("dark"); updateThemePreferences("dark", accent); }}>
                       <Moon className="h-4 w-4 mr-2" />
                       Dark {mode === "dark" && "✓"}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setMode("system")}>
+                    <DropdownMenuItem onClick={() => { setMode("system"); updateThemePreferences("system", accent); }}>
                       <Monitor className="h-4 w-4 mr-2" />
                       System {mode === "system" && "✓"}
                     </DropdownMenuItem>
