@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader, StatusBadge, FileIcon, UserAvatar, StatusPill } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,11 +16,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useFolders, useFolderContents, downloadFile, logFileAccess } from "@/services/fileService";
+import { useFolders, useFolderContents, useGlobalSearch, downloadFile, logFileAccess } from "@/services/fileService";
 import { useAdminUsers } from "@/services/userService";
 import { useGrantPermission, useFolderPermissions, useRevokePermission, useUsersWithoutAccess } from "@/services/permissionService";
 import { auditService } from "@/services/auditService";
 import type { FileDto, FolderDto } from "@/dto/FolderDto";
+import type { DriveItem } from "@/dto/FolderDto";
 
 export default function Documents() {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -28,6 +29,7 @@ export default function Documents() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [accessPanelFolder, setAccessPanelFolder] = useState<FolderDto | null>(null);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [previewFile, setPreviewFile] = useState<FileDto | null>(null);
   const [detailFile, setDetailFile] = useState<FileDto | null>(null);
@@ -47,6 +49,37 @@ export default function Documents() {
   const { data: folderPermissions = [], isLoading: loadingPermissions, refetch: refetchPermissions } = useFolderPermissions(accessPanelFolder?.id || null);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+
+  const searchRef = useRef<HTMLDivElement>(null);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const { data: globalResults = [], isLoading: searchingGlobal } = useGlobalSearch(debouncedSearch);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      if (search.trim().length >= 2) setShowSearchDropdown(true);
+      else setShowSearchDropdown(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSearchDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowSearchDropdown(false);
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
 
   const foldersToDisplay = currentFolderId ? folderContents?.folders || [] : rootFolders;
   const filesToDisplay = currentFolderId ? folderContents?.files || [] : [];
@@ -126,9 +159,42 @@ export default function Documents() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
+          <div ref={searchRef} className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={currentFolderId ? "Search files/folders in this folder..." : "Search folders..."} className="pl-9" />
+            {showSearchDropdown && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-xl shadow-xl max-h-80 overflow-y-auto">
+                {searchingGlobal ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : globalResults.length === 0 ? (
+                  <div className="text-center py-6 text-sm text-muted-foreground">No files found</div>
+                ) : (
+                  globalResults.map((item: DriveItem) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        if (item.type === "folder") return;
+                        setSearch("");
+                        setShowSearchDropdown(false);
+                        logFileAccess(item.id, item.name, "preview");
+                        setPreviewFile(item as FileDto);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent text-left transition border-b border-border last:border-0"
+                    >
+                      <FileIcon type={item.type === "folder" ? "folder" : (item as FileDto).extension} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{item.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {item.type === "folder" ? "Folder" : `${(item as FileDto).size} · ${new Date(item.modifiedAt).toLocaleDateString()}`}
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
           {currentFolderId && (
             <Select value={filter} onValueChange={setFilter}>
@@ -142,10 +208,10 @@ export default function Documents() {
             </Select>
           )}
           {currentFolderId && <Button variant="outline" onClick={() => {
-  const parentId = folderContents?.parentId ?? null;
-  setCurrentFolderId(parentId);
-  setCrumbs(prev => parentId === null ? [{ id: null, name: 'Home' }] : prev.slice(0, -1));
-}}><ArrowLeft className="h-4 w-4 mr-2 select-none" />Back</Button>}
+            const parentId = folderContents?.parentId ?? null;
+            setCurrentFolderId(parentId);
+            setCrumbs(prev => parentId === null ? [{ id: null, name: 'Home' }] : prev.slice(0, -1));
+          }}><ArrowLeft className="h-4 w-4 mr-2 select-none" />Back</Button>}
           {currentFolderId && isAdmin && (
             <Button
               variant="outline"
@@ -218,12 +284,12 @@ export default function Documents() {
                     key={f.id}
                     className={`p-4 transition select-none cursor-pointer ${selectedId === f.id ? 'border-primary ring-2 ring-primary/30' : 'hover:border-primary'}`}
                     onClick={() => setSelectedId(selectedId === f.id ? null : f.id)}
-                    onDoubleClick={() => setDetailFile(f)}
+                    onDoubleClick={() => { logFileAccess(f.id, f.name, "preview"); setPreviewFile(f); }}
                   >
                     <div className="flex items-start gap-3">
                       <FileIcon type={f.extension} />
                       <div className="flex-1 min-w-0">
-                        <button onClick={(e) => { e.stopPropagation(); setDetailFile(f); }} onDoubleClick={(e) => e.stopPropagation()} className="font-medium truncate text-left hover:text-primary block w-full">{f.name}</button>
+                        <button onClick={(e) => { e.stopPropagation(); logFileAccess(f.id, f.name, "preview"); setPreviewFile(f); }} onDoubleClick={(e) => e.stopPropagation()} className="font-medium truncate text-left hover:text-primary block w-full">{f.name}</button>
                         <div className="text-xs text-muted-foreground mt-0.5">{f.size} · {new Date(f.modifiedAt).toLocaleDateString()}</div>
                         <div className="flex items-center gap-1 mt-3" onClick={(e) => e.stopPropagation()}>
                           <Button size="sm" variant="outline" onClick={() => { logFileAccess(f.id, f.name, "preview"); setPreviewFile(f); }}><Eye className="h-3 w-3 mr-1" />Preview</Button>

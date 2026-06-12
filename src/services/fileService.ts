@@ -1,6 +1,6 @@
 import createAxiosInstance from "@/config/axios-config";
 import { useQuery } from "@tanstack/react-query";
-import type { FoldersResponse, FolderContentsResponse } from "@/dto/FolderDto";
+import type { FoldersResponse, FolderContentsResponse, SearchResponse } from "@/dto/FolderDto";
 
 const axios = createAxiosInstance(import.meta.env.VITE_BASE_URL ?? "");
 
@@ -71,6 +71,20 @@ export function useFolderContents(folderId: string) {
   });
 }
 
+
+export function useGlobalSearch(query: string, pageSize = 10) {
+  return useQuery({
+    queryKey: ["global-search", query, pageSize],
+    queryFn: async () => {
+      const params = new URLSearchParams({ q: query, pageSize: String(pageSize) });
+      const { data } = await axios.get<SearchResponse>(`/drive/search/global?${params}`);
+      if (!data.success) throw new Error("Search failed");
+      return data.data.items;
+    },
+    enabled: query.length >= 2,
+    staleTime: 30_000,
+  });
+}
 
 export async function downloadFile(fileId: string, fileName: string) {
   try {

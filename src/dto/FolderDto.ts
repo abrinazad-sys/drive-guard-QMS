@@ -41,3 +41,13 @@ export interface FolderContentsResponse {
     nextPageToken?: string;
   };
 }
+
+export type DriveItem = FileDto | FolderDto;
+
+export interface SearchResponse {
+  success: boolean;
+  data: {
+    items: DriveItem[];
+    nextPageToken?: string;
+  };
+}
