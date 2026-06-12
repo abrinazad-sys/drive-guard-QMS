@@ -39,7 +39,7 @@ const adminNav = [
   // { title: "Sync Health", url: "/sync", icon: Activity },
   // { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Profile", url: "/profile", icon: User },
-  { title: "System Settings", url: "/settings", icon: Settings },
+  // { title: "System Settings", url: "/settings", icon: Settings },
 ];
 
 const employeeNav = [
@@ -90,7 +90,7 @@ export function AppSidebar() {
           <SidebarTrigger />
         </div>
         <SidebarGroup>
-          <SidebarGroupLabel>Main</SidebarGroupLabel>
+          {/* <SidebarGroupLabel>Main</SidebarGroupLabel> */}
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {

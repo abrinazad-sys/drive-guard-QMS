@@ -1,10 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared";
-import { groups } from "@/lib/mock-data";
 import { useAdminUsers } from "@/services/userService";
 import { useFolders } from "@/services/fileService";
 import { useGrantBulkPermissions, useRevokeBulkPermissions, useUserPermissions, useRevokePermission } from "@/services/permissionService";
-import { auditService } from "@/services/auditService";
 import {
   Card,
   CardContent,
@@ -19,15 +17,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search,
-  Check,
-  Minus,
   FolderOpen,
-  UserPlus,
-  Calendar,
   Trash2,
   Loader2,
   X,
   User,
+  UserCheck,
 } from "lucide-react";
 import {
   Dialog,
@@ -37,7 +32,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -49,11 +43,12 @@ export default function Permissions() {
   const bulkRevokeMutation = useRevokeBulkPermissions();
 
   const employees = useMemo(() => allUsers.filter((u) => u.role === "user"), [allUsers]);
-  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [folderSearch, setFolderSearch] = useState("");
   const [revokeOpen, setRevokeOpen] = useState(false);
+  const [grantConfirmOpen, setGrantConfirmOpen] = useState(false);
   const [activeUserSearchId, setActiveUserSearchId] = useState<number | null>(null);
   const [userSearchQueryTab, setUserSearchQueryTab] = useState("");
 
@@ -72,76 +67,52 @@ export default function Permissions() {
       ),
     [folderSearch, allFolders],
   );
-  const hiddenUsers = selectedUsers.filter(
-    (id) => !visibleUsers.find((u) => u.id === id),
-  ).length;
   const hiddenFolders = selectedFolders.filter(
     (id) => !visibleFolders.find((f) => f.id === id),
   ).length;
 
-  const toggle = <T,>(arr: T[], setArr: (v: T[]) => void, id: T) =>
-    setArr(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
+  // Fetch selected user's permissions for Direct Access
+  const { data: selectedUserPerms, isLoading: loadingUserPerms } = useUserPermissions(selectedUserId);
+  const selectedUserExistingFolderIds = useMemo(
+    () => selectedUserPerms?.permissions.map((p) => p.folderId) ?? [],
+    [selectedUserPerms],
+  );
+
+  // Auto-select folders the user already has access to
+  useEffect(() => {
+    if (selectedUserId && selectedUserPerms) {
+      setSelectedFolders(selectedUserExistingFolderIds);
+    }
+  }, [selectedUserId, selectedUserPerms]);
+
+  const selectedUser = useMemo(
+    () => (selectedUserId ? allUsers.find((u) => u.id === selectedUserId) ?? null : null),
+    [selectedUserId, allUsers],
+  );
+
+  const foldersToGrant = selectedFolders.filter((id) => !selectedUserExistingFolderIds.includes(id));
+  const foldersToRevoke = selectedUserExistingFolderIds.filter((id) => !selectedFolders.includes(id));
 
   const grant = async () => {
-    if (selectedUsers.length === 0 || selectedFolders.length === 0) return;
-
+    if (!selectedUserId || foldersToGrant.length === 0) return;
     try {
-      // The API is per user, so we loop if multiple users are selected
-      const promises = selectedUsers.map((userId) =>
-        bulkGrantMutation.mutateAsync({
-          userId,
-          folderIds: selectedFolders,
-        })
-      );
-
-      await Promise.all(promises);
-
-      // Audit Log
-      // selectedUsers.forEach(userId => {
-      //   const user = allUsers.find(u => u.id === userId);
-      //   selectedFolders.forEach(fid => {
-      //     const folderName = allFolders.find(f => f.id === fid)?.name;
-      //     auditService.addLog({
-      //       actor: "Admin", // Should ideally be from AuthContext
-      //       role: "admin",
-      //       action: "Granted access",
-      //       target: user?.name || `User ${userId}`,
-      //       folder: folderName || "Unknown Folder",
-      //       status: "active"
-      //     });
-      //   });
-      // });
-
-      toast.success(
-        `Access granted to ${selectedUsers.length} user${selectedUsers.length > 1 ? "s" : ""} for ${selectedFolders.length} folder${selectedFolders.length > 1 ? "s" : ""}`
-      );
-      
-      // Clear selection after success
-      setSelectedUsers([]);
+      await bulkGrantMutation.mutateAsync({ userId: selectedUserId, folderIds: foldersToGrant });
+      toast.success(`Access granted to ${selectedUser?.name} for ${foldersToGrant.length} folder(s)`);
+      setSelectedUserId(null);
       setSelectedFolders([]);
+      setGrantConfirmOpen(false);
     } catch (error) {
       console.log("Error : ", error)
     }
   };
+
   const revoke = async () => {
-    if (selectedUsers.length === 0 || selectedFolders.length === 0) return;
-
+    if (!selectedUserId || foldersToRevoke.length === 0) return;
     try {
-      const promises = selectedUsers.map((userId) =>
-        bulkRevokeMutation.mutateAsync({
-          userId,
-          folderIds: selectedFolders,
-        })
-      );
-
-      await Promise.all(promises);
-
-      toast.success(
-        `Access revoked from ${selectedUsers.length} user${selectedUsers.length > 1 ? "s" : ""} for ${selectedFolders.length} folder${selectedFolders.length > 1 ? "s" : ""}`
-      );
-      
+      await bulkRevokeMutation.mutateAsync({ userId: selectedUserId, folderIds: foldersToRevoke });
+      toast.success(`Access revoked from ${selectedUser?.name} for ${foldersToRevoke.length} folder(s)`);
       setRevokeOpen(false);
-      setSelectedUsers([]);
+      setSelectedUserId(null);
       setSelectedFolders([]);
     } catch (error) {
       console.log("Error ", error)
@@ -151,8 +122,8 @@ export default function Permissions() {
   const isGranting = bulkGrantMutation.isPending;
   const isRevoking = bulkRevokeMutation.isPending;
   
-  const { data: userPermissionsData, isLoading: loadingUserPermissions, refetch: refetchUserPermissions } = useUserPermissions(activeUserSearchId);
   const singleRevokeMutation = useRevokePermission();
+  const { data: userPermissionsData, isLoading: loadingUserPermissions, refetch: refetchUserPermissions } = useUserPermissions(activeUserSearchId);
 
   const filteredUsersForTab = useMemo(() => {
     if (!userSearchQueryTab) return [];
@@ -162,7 +133,8 @@ export default function Permissions() {
     ).slice(0, 5);
   }, [employees, userSearchQueryTab]);
 
-  const canAct = selectedUsers.length > 0 && selectedFolders.length > 0 && !isGranting && !isRevoking;
+  const canGrant = !!selectedUserId && foldersToGrant.length > 0 && !isGranting;
+  const canRevoke = !!selectedUserId && foldersToRevoke.length > 0 && !isRevoking;
 
   return (
     <div className="space-y-6 pb-28">
@@ -182,8 +154,8 @@ export default function Permissions() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <PanelCard
               title="Users"
-              count={selectedUsers.length}
-              hidden={hiddenUsers}
+              count={selectedUserId ? 1 : 0}
+              hidden={0}
             >
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -194,25 +166,6 @@ export default function Permissions() {
                   className="pl-9"
                 />
               </div>
-              <SelectAll
-                onAll={() =>
-                  setSelectedUsers(
-                    Array.from(
-                      new Set([
-                        ...selectedUsers,
-                        ...visibleUsers.map((u) => u.id),
-                      ]),
-                    ),
-                  )
-                }
-                onNone={() =>
-                  setSelectedUsers(
-                    selectedUsers.filter(
-                      (id) => !visibleUsers.find((u) => u.id === id),
-                    ),
-                  )
-                }
-              />
               <div className="space-y-1 max-h-[400px] overflow-y-auto">
                 {loadingUsers ? (
                   <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -221,12 +174,12 @@ export default function Permissions() {
                   </div>
                 ) : visibleUsers.length > 0 ? (
                   visibleUsers.map((u) => {
-                    const sel = selectedUsers.includes(u.id);
+                    const sel = selectedUserId === u.id;
                     return (
                       <button
                         key={u.id}
                         onClick={() =>
-                          toggle(selectedUsers, setSelectedUsers, u.id)
+                          setSelectedUserId(sel ? null : u.id)
                         }
                         className={cn(
                           "w-full flex items-center gap-3 p-2.5 rounded-lg border transition",
@@ -235,7 +188,12 @@ export default function Permissions() {
                             : "border-transparent hover:bg-muted",
                         )}
                       >
-                        <Checkbox checked={sel} />
+                        <div className={cn(
+                          "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0",
+                          sel ? "border-primary" : "border-muted-foreground/30"
+                        )}>
+                          {sel && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                        </div>
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="bg-primary-soft text-primary text-xs">
                             {u.name
@@ -283,30 +241,20 @@ export default function Permissions() {
                   className="pl-9"
                 />
               </div>
-              <SelectAll
-                onAll={() =>
-                  setSelectedFolders(
-                    Array.from(
-                      new Set([
-                        ...selectedFolders,
-                        ...visibleFolders.map((f) => f.id),
-                      ]),
-                    ),
-                  )
-                }
-                onNone={() =>
-                  setSelectedFolders(
-                    selectedFolders.filter(
-                      (id) => !visibleFolders.find((f) => f.id === id),
-                    ),
-                  )
-                }
-              />
               <div className="space-y-1 max-h-[400px] overflow-y-auto">
                 {loadingFolders ? (
                   <div className="flex flex-col items-center justify-center py-20 gap-3">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     <p className="text-sm text-muted-foreground">Loading folders...</p>
+                  </div>
+                ) : !selectedUserId ? (
+                  <div className="text-center py-10">
+                    <p className="text-sm text-muted-foreground">Select a user first</p>
+                  </div>
+                ) : loadingUserPerms ? (
+                  <div className="flex flex-col items-center justify-center py-10 gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <p className="text-xs text-muted-foreground">Loading user's permissions...</p>
                   </div>
                 ) : visibleFolders.length > 0 ? (
                   visibleFolders.map((f) => {
@@ -314,9 +262,13 @@ export default function Permissions() {
                     return (
                       <button
                         key={f.id}
-                        onClick={() =>
-                          toggle(selectedFolders, setSelectedFolders, f.id)
-                        }
+                        onClick={() => {
+                          setSelectedFolders((prev) =>
+                            prev.includes(f.id)
+                              ? prev.filter((id) => id !== f.id)
+                              : [...prev, f.id]
+                          );
+                        }}
                         className={cn(
                           "w-full flex items-center gap-3 p-2.5 rounded-lg border transition",
                           sel
@@ -345,63 +297,6 @@ export default function Permissions() {
               </div>
             </PanelCard>
           </div>
-
-          {canAct && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Permission Matrix</CardTitle>
-                <CardDescription>
-                  Current access for selected users and folders
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-2 px-3 font-medium">User</th>
-                      {selectedFolders.map((fid) => {
-                        const f = allFolders.find((x) => x.id === fid);
-                        return (
-                          <th
-                            key={fid}
-                            className="text-center py-2 px-3 font-medium whitespace-nowrap"
-                          >
-                            {f?.name}
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedUsers.map((uid) => {
-                      const u = allUsers.find((x) => x.id === uid);
-                      return (
-                        <tr
-                          key={uid}
-                          className="border-b border-border last:border-0"
-                        >
-                          <td className="py-2 px-3 font-medium whitespace-nowrap">
-                            {u?.name}
-                          </td>
-                          {selectedFolders.map((fid) => {
-                            return (
-                              <td key={fid} className="text-center py-2 px-3">
-                                {isGranting ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-primary mx-auto" />
-                                ) : (
-                                  <Minus className="h-4 w-4 text-muted-foreground mx-auto" />
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
-          )}
 
           {/* <Card>
             <CardHeader>
@@ -607,53 +502,92 @@ export default function Permissions() {
       <div className="relative bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border p-3 z-40">
         <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4">
           <div className="text-sm text-muted-foreground">
-            <strong>{selectedUsers.length}</strong> users ·{" "}
-            <strong>{selectedFolders.length}</strong> folders selected
+            {selectedUserId ? (
+              <>
+                User: <strong>{selectedUser?.name}</strong> ·{" "}
+                <strong>{selectedFolders.length}</strong> folders selected
+                {foldersToGrant.length > 0 && (
+                  <span className="text-green-600 ml-2">({foldersToGrant.length} to grant)</span>
+                )}
+                {foldersToRevoke.length > 0 && (
+                  <span className="text-destructive ml-2">({foldersToRevoke.length} to revoke)</span>
+                )}
+              </>
+            ) : (
+              "Select a user to manage folder access"
+            )}
           </div>
           <div className="flex gap-2">
             <Button
               variant="outline"
-              disabled={!canAct}
+              disabled={!canRevoke}
               onClick={() => setRevokeOpen(true)}
             >
               Revoke access
+              {foldersToRevoke.length > 0 && ` (${foldersToRevoke.length})`}
             </Button>
-            <Button disabled={!canAct} onClick={grant} className="min-w-[120px]">
-              {isGranting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Granting...
-                </>
-              ) : (
-                "Grant access"
-              )}
+            <Button disabled={!canGrant} onClick={() => setGrantConfirmOpen(true)} className="min-w-[120px]">
+              Grant access
+              {foldersToGrant.length > 0 && ` (${foldersToGrant.length})`}
             </Button>
           </div>
         </div>
       </div>
 
+      {/* Grant confirmation modal */}
+      <Dialog open={grantConfirmOpen} onOpenChange={setGrantConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Grant Access</DialogTitle>
+            <DialogDescription>
+              Grant <strong>{selectedUser?.name}</strong> access to {foldersToGrant.length} folder(s)?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="text-sm space-y-2 max-h-40 overflow-y-auto">
+            {foldersToGrant.map((id) => {
+              const f = allFolders.find((x) => x.id === id);
+              return (
+                <div key={id} className="flex items-center gap-2 p-1.5 rounded bg-muted/50">
+                  <FolderOpen className="h-4 w-4 text-primary shrink-0" />
+                  <span>{f?.name ?? id}</span>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGrantConfirmOpen(false)} disabled={isGranting}>
+              Cancel
+            </Button>
+            <Button onClick={grant} disabled={isGranting}>
+              {isGranting ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Granting...</>
+              ) : (
+                "Confirm grant"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revoke confirmation modal */}
       <Dialog open={revokeOpen} onOpenChange={setRevokeOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Revoke access?</DialogTitle>
+            <DialogTitle>Revoke Access</DialogTitle>
             <DialogDescription>
-              This will remove access for the following users from the selected
-              folders.
+              Revoke <strong>{selectedUser?.name}</strong>'s access from {foldersToRevoke.length} folder(s)?
             </DialogDescription>
           </DialogHeader>
-          <div className="text-sm space-y-2">
-            <div>
-              <strong>Users:</strong>{" "}
-              {selectedUsers
-                .map((id) => allUsers.find((u) => u.id === id)?.name)
-                .join(", ")}
-            </div>
-            <div>
-              <strong>Folders:</strong>{" "}
-              {selectedFolders
-                .map((id) => allFolders.find((f) => f.id === id)?.name)
-                .join(", ")}
-            </div>
+          <div className="text-sm space-y-2 max-h-40 overflow-y-auto">
+            {foldersToRevoke.map((id) => {
+              const f = allFolders.find((x) => x.id === id);
+              return (
+                <div key={id} className="flex items-center gap-2 p-1.5 rounded bg-muted/50">
+                  <FolderOpen className="h-4 w-4 text-destructive shrink-0" />
+                  <span>{f?.name ?? id}</span>
+                </div>
+              );
+            })}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRevokeOpen(false)} disabled={isRevoking}>
@@ -661,10 +595,7 @@ export default function Permissions() {
             </Button>
             <Button variant="destructive" onClick={revoke} disabled={isRevoking}>
               {isRevoking ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Revoking...
-                </>
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Revoking...</>
               ) : (
                 "Confirm revoke"
               )}
@@ -707,25 +638,4 @@ function PanelCard({
   );
 }
 
-function SelectAll({
-  onAll,
-  onNone,
-}: {
-  onAll: () => void;
-  onNone: () => void;
-}) {
-  return (
-    <div className="flex gap-2 text-xs mb-2">
-      <button onClick={onAll} className="text-primary hover:underline">
-        Select all visible
-      </button>
-      <span className="text-muted-foreground">·</span>
-      <button
-        onClick={onNone}
-        className="text-muted-foreground hover:text-foreground"
-      >
-        Clear visible
-      </button>
-    </div>
-  );
-}
+

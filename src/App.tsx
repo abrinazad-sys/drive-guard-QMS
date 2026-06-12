@@ -39,8 +39,12 @@ const App = () => (
                   <Route element={<AppLayout />}>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/documents" element={<Documents />} />
-                    <Route path="/notifications" element={<Notifications />} />
+                    {/* <Route path="/notifications" element={<Notifications />} /> */}
                     <Route path="/profile" element={<ProfilePage />} />
+                  </Route>
+                </Route>
+                <Route element={<ProtectedRoute role="user" />}>
+                  <Route element={<AppLayout />}>
                     <Route path="/my-activity" element={<ActivityPage />} />
                   </Route>
                 </Route>
@@ -49,8 +53,8 @@ const App = () => (
                     <Route path="/users" element={<UsersPage />} />
                     <Route path="/permissions" element={<Permissions />} />
                     <Route path="/audit" element={<Audit />} />
-                    <Route path="/sync" element={<Sync />} />
-                    <Route path="/settings" element={<SystemSettings />} />
+                    {/* <Route path="/sync" element={<Sync />} /> */}
+                    {/* <Route path="/settings" element={<SystemSettings />} /> */}
                   </Route>
                 </Route>
                 <Route path="*" element={<NotFound />} />
