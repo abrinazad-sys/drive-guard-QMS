@@ -17,9 +17,17 @@ interface ApiErrorResponse {
   message?: string;
 }
 
+export interface PermissionSourceDto {
+  folderId: string;
+  folderName: string;
+  role: DriveRole;
+}
+
 export interface FolderPermissionDto {
   permissionId: number;
-  role: DriveRole; // Drive role on the folder
+  role: DriveRole; // effective Drive role on the folder
+  inherited: boolean; // true when the grant lives on an ancestor, not this folder
+  sources: PermissionSourceDto[]; // folders where the user is explicitly granted
   grantedAt: string;
   grantedBy: string;
   user: {

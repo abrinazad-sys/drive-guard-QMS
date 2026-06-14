@@ -17,10 +17,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useFolders, useFolderContents, useGlobalSearch, downloadFile, logFileAccess } from "@/services/fileService";
 import { useAdminUsers } from "@/services/userService";
-import { useGrantPermission, useFolderPermissions, useRevokePermission, useUsersWithoutAccess } from "@/services/permissionService";
+import { useGrantPermission, useFolderPermissions, useRevokePermission, useRevokeBulkPermissions, useUsersWithoutAccess, type PermissionSourceDto } from "@/services/permissionService";
 import { auditService } from "@/services/auditService";
 import { RoleBadge, RoleSelect } from "@/components/RoleControls";
-import { DEFAULT_ROLE, type DriveRole } from "@/lib/roles";
+import { DEFAULT_ROLE, roleLabel, type DriveRole } from "@/lib/roles";
 import type { FileDto, FolderDto } from "@/dto/FolderDto";
 import type { DriveItem } from "@/dto/FolderDto";
 
@@ -43,6 +43,7 @@ export default function Documents() {
   const [grantSelectedRole, setGrantSelectedRole] = useState<DriveRole>(DEFAULT_ROLE);
   const [revokingUserId, setRevokingUserId] = useState<number | null>(null);
   const [pendingPanelRevoke, setPendingPanelRevoke] = useState<{ userId: number; userName: string } | null>(null);
+  const [pendingInheritedRevoke, setPendingInheritedRevoke] = useState<{ userId: number; userName: string; targetName: string; sources: PermissionSourceDto[] } | null>(null);
 
   const resetGrantModal = () => {
     setGrantPermissionFolder(null);
@@ -58,6 +59,7 @@ export default function Documents() {
   const { data: usersWithoutAccess = [] } = useUsersWithoutAccess(grantPermissionFolder?.id || null, userSearchQuery);
   const grantPermissionMutation = useGrantPermission();
   const revokePermissionMutation = useRevokePermission();
+  const revokeBulkMutation = useRevokeBulkPermissions();
   const { data: folderPermissions = [], isLoading: loadingPermissions, refetch: refetchPermissions } = useFolderPermissions(accessPanelFolder?.id || null);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -484,7 +486,16 @@ export default function Documents() {
                   <button
                     onClick={() => {
                       if (!accessPanelFolder || perm.user.role === 'admin') return;
-                      setPendingPanelRevoke({ userId: perm.user.id, userName: perm.user.name });
+                      if (perm.inherited) {
+                        setPendingInheritedRevoke({
+                          userId: perm.user.id,
+                          userName: perm.user.name,
+                          targetName: accessPanelFolder.name,
+                          sources: perm.sources,
+                        });
+                      } else {
+                        setPendingPanelRevoke({ userId: perm.user.id, userName: perm.user.name });
+                      }
                     }}
                     disabled={revokingUserId === perm.user.id || perm.user.role === 'admin'}
                     className="text-muted-foreground hover:text-destructive p-2 rounded-lg transition-colors disabled:opacity-50"
@@ -661,6 +672,79 @@ export default function Documents() {
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Removing...</>
               ) : (
                 "Remove access"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Remove from parent folder (inherited access) */}
+      <Dialog open={!!pendingInheritedRevoke} onOpenChange={(open) => { if (!open) setPendingInheritedRevoke(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove from parent folder?</DialogTitle>
+            <DialogDescription>
+              Removing <strong>{pendingInheritedRevoke?.userName}</strong> from this item will
+              also remove them from a parent folder.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2 space-y-3">
+            {pendingInheritedRevoke?.sources.map((s) => (
+              <div key={s.folderId} className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{s.folderName}</div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground line-through">{roleLabel(s.role)}</span>
+                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-destructive font-medium">Remove</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <div className="flex items-center gap-3 pl-6 border-l border-border ml-4">
+              <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">{pendingInheritedRevoke?.targetName}</div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-muted-foreground line-through">{roleLabel(pendingInheritedRevoke?.sources[0]?.role)}</span>
+                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-destructive font-medium">Remove</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button variant="outline" onClick={() => setPendingInheritedRevoke(null)} disabled={revokeBulkMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              disabled={revokeBulkMutation.isPending}
+              onClick={() => {
+                if (!pendingInheritedRevoke) return;
+                const target = pendingInheritedRevoke;
+                revokeBulkMutation.mutate(
+                  { userId: target.userId, folderIds: target.sources.map((s) => s.folderId) },
+                  {
+                    onSuccess: () => {
+                      toast.success("Access removed from parent folder");
+                      refetchPermissions();
+                      setPendingInheritedRevoke(null);
+                    },
+                  },
+                );
+              }}
+            >
+              {revokeBulkMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Removing...</>
+              ) : (
+                "Remove from parent"
               )}
             </Button>
           </div>
