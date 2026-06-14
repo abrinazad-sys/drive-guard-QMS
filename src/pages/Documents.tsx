@@ -42,6 +42,7 @@ export default function Documents() {
   const [grantSelectedUser, setGrantSelectedUser] = useState<{ id: number; name: string; email: string } | null>(null);
   const [grantSelectedRole, setGrantSelectedRole] = useState<DriveRole>(DEFAULT_ROLE);
   const [revokingUserId, setRevokingUserId] = useState<number | null>(null);
+  const [pendingPanelRevoke, setPendingPanelRevoke] = useState<{ userId: number; userName: string } | null>(null);
 
   const resetGrantModal = () => {
     setGrantPermissionFolder(null);
@@ -482,38 +483,8 @@ export default function Documents() {
                   </div>
                   <button
                     onClick={() => {
-                      if (!accessPanelFolder) return;
-                      setRevokingUserId(perm.user.id);
-                      revokePermissionMutation.mutate(
-                        { folderId: accessPanelFolder.id, userId: perm.user.id },
-                        {
-                          onSuccess: () => {
-                            const targetUser = folderPermissions.find(p => p.user.id === perm.user.id)?.user;
-                            auditService.addLog({
-                              actor: "Admin",
-                              role: "admin",
-                              action: "Revoked access",
-                              target: targetUser?.name || `User ${perm.user.id}`,
-                              folder: accessPanelFolder.name,
-                              status: "active"
-                            });
-                            toast.success("Permission revoked successfully");
-                            refetchPermissions();
-                          },
-                          onError: () => {
-                            const targetUser = folderPermissions.find(p => p.user.id === perm.user.id)?.user;
-                            auditService.addLog({
-                              actor: "Admin",
-                              role: "admin",
-                              action: "Revoked access",
-                              target: targetUser?.name || `User ${perm.user.id}`,
-                              folder: accessPanelFolder.name,
-                              status: "deactive"
-                            });
-                          },
-                          onSettled: () => setRevokingUserId(null),
-                        }
-                      );
+                      if (!accessPanelFolder || perm.user.role === 'admin') return;
+                      setPendingPanelRevoke({ userId: perm.user.id, userName: perm.user.name });
                     }}
                     disabled={revokingUserId === perm.user.id || perm.user.role === 'admin'}
                     className="text-muted-foreground hover:text-destructive p-2 rounded-lg transition-colors disabled:opacity-50"
@@ -628,6 +599,71 @@ export default function Documents() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!pendingPanelRevoke} onOpenChange={(open) => { if (!open) setPendingPanelRevoke(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove Access</DialogTitle>
+            <DialogDescription>
+              Remove <strong>{pendingPanelRevoke?.userName}</strong>'s access to{" "}
+              <strong>{accessPanelFolder?.name}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={() => setPendingPanelRevoke(null)}
+              disabled={revokePermissionMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={revokePermissionMutation.isPending}
+              onClick={() => {
+                if (!accessPanelFolder || !pendingPanelRevoke) return;
+                const target = pendingPanelRevoke;
+                setRevokingUserId(target.userId);
+                revokePermissionMutation.mutate(
+                  { folderId: accessPanelFolder.id, userId: target.userId },
+                  {
+                    onSuccess: () => {
+                      auditService.addLog({
+                        actor: "Admin",
+                        role: "admin",
+                        action: "Revoked access",
+                        target: target.userName,
+                        folder: accessPanelFolder.name,
+                        status: "active",
+                      });
+                      toast.success("Permission revoked successfully");
+                      refetchPermissions();
+                      setPendingPanelRevoke(null);
+                    },
+                    onError: () => {
+                      auditService.addLog({
+                        actor: "Admin",
+                        role: "admin",
+                        action: "Revoked access",
+                        target: target.userName,
+                        folder: accessPanelFolder.name,
+                        status: "deactive",
+                      });
+                    },
+                    onSettled: () => setRevokingUserId(null),
+                  },
+                );
+              }}
+            >
+              {revokePermissionMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Removing...</>
+              ) : (
+                "Remove access"
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

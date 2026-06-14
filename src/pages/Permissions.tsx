@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Permissions() {
   const { data: allUsers = [], isLoading: loadingUsers } = useAdminUsers();
@@ -218,6 +218,7 @@ export default function Permissions() {
                           {sel && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
                         </div>
                         <Avatar className="h-8 w-8">
+                          <AvatarImage src={u.profilePhotoUrl || undefined} alt={u.name} />
                           <AvatarFallback className="bg-primary-soft text-primary text-xs">
                             {u.name
                               .split(" ")
@@ -392,6 +393,7 @@ export default function Permissions() {
                         className="w-full flex items-center gap-3 p-2 hover:bg-muted rounded-md transition-colors text-left"
                       >
                         <Avatar className="h-8 w-8">
+                          <AvatarImage src={u.profilePhotoUrl || undefined} alt={u.name} />
                           <AvatarFallback className="bg-primary-soft text-primary text-xs">
                             {u.name.split(" ").map(n => n[0]).join("")}
                           </AvatarFallback>
@@ -411,6 +413,7 @@ export default function Permissions() {
                   <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-border">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-12 w-12">
+                        <AvatarImage src={userPermissionsData?.user.profilePhotoUrl || undefined} alt={userPermissionsData?.user.name} />
                         <AvatarFallback className="bg-primary/10 text-primary">
                           {userPermissionsData?.user.name.split(" ").map(n => n[0]).join("")}
                         </AvatarFallback>

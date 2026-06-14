@@ -132,6 +132,7 @@ export interface UserPermissionsResponse {
       id: number;
       name: string;
       email: string;
+      profilePhotoUrl?: string | null;
     };
     permissions: {
       permissionId: number;
