@@ -3,12 +3,14 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "./authService";
+import type { DriveRole } from "@/lib/roles";
 
 const axios = createAxiosInstance(import.meta.env.VITE_BASE_URL ?? "");
 
 export interface GrantPermissionRequest {
   folderId: string;
-  userIds: number[];
+  userId: number;
+  role: DriveRole;
 }
 
 interface ApiErrorResponse {
@@ -17,13 +19,14 @@ interface ApiErrorResponse {
 
 export interface FolderPermissionDto {
   permissionId: number;
+  role: DriveRole; // Drive role on the folder
   grantedAt: string;
   grantedBy: string;
   user: {
     id: number;
     name: string;
     email: string;
-    role: string;
+    role: string; // app role (admin | user)
     isActive: boolean;
   };
 }
@@ -86,6 +89,11 @@ export function useRevokePermission() {
 
 export interface GrantBulkPermissionsRequest {
   userId: number;
+  folders: { folderId: string; role: DriveRole }[];
+}
+
+export interface RevokeBulkPermissionsRequest {
+  userId: number;
   folderIds: string[];
 }
 
@@ -104,7 +112,7 @@ export function useGrantBulkPermissions() {
 }
 
 export function useRevokeBulkPermissions() {
-  return useMutation<{ success: boolean }, AxiosError<ApiErrorResponse>, GrantBulkPermissionsRequest>({
+  return useMutation<{ success: boolean }, AxiosError<ApiErrorResponse>, RevokeBulkPermissionsRequest>({
     mutationFn: async (payload) => {
       const { data } = await axios.delete<{ success: boolean }>("/admin/permissions/user-folders", { data: payload });
       return data;
@@ -131,6 +139,7 @@ export interface UserPermissionsResponse {
       grantedAt: string;
       grantedBy: string;
       folderName: string;
+      role: DriveRole;
     }[];
   };
 }

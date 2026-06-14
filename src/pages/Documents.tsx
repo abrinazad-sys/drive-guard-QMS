@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +19,8 @@ import { useFolders, useFolderContents, useGlobalSearch, downloadFile, logFileAc
 import { useAdminUsers } from "@/services/userService";
 import { useGrantPermission, useFolderPermissions, useRevokePermission, useUsersWithoutAccess } from "@/services/permissionService";
 import { auditService } from "@/services/auditService";
+import { RoleBadge, RoleSelect } from "@/components/RoleControls";
+import { DEFAULT_ROLE, type DriveRole } from "@/lib/roles";
 import type { FileDto, FolderDto } from "@/dto/FolderDto";
 import type { DriveItem } from "@/dto/FolderDto";
 
@@ -37,8 +38,18 @@ export default function Documents() {
   const [downloaded, setDownloaded] = useState<string | null>(null);
   const [grantPermissionFolder, setGrantPermissionFolder] = useState<FolderDto | null>(null);
   const [userSearchQuery, setUserSearchQuery] = useState("");
-  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [grantStep, setGrantStep] = useState<1 | 2>(1);
+  const [grantSelectedUser, setGrantSelectedUser] = useState<{ id: number; name: string; email: string } | null>(null);
+  const [grantSelectedRole, setGrantSelectedRole] = useState<DriveRole>(DEFAULT_ROLE);
   const [revokingUserId, setRevokingUserId] = useState<number | null>(null);
+
+  const resetGrantModal = () => {
+    setGrantPermissionFolder(null);
+    setGrantStep(1);
+    setGrantSelectedUser(null);
+    setGrantSelectedRole(DEFAULT_ROLE);
+    setUserSearchQuery("");
+  };
 
   const { data: rootFolders = [], isLoading: loadingRoot } = useFolders();
   const { data: folderContents, isLoading: loadingContents } = useFolderContents(currentFolderId || "");
@@ -113,19 +124,18 @@ export default function Documents() {
   };
 
   const handleGrantPermission = () => {
-    if (!grantPermissionFolder || selectedUserIds.length === 0) return;
+    if (!grantPermissionFolder || !grantSelectedUser) return;
 
     grantPermissionMutation.mutate(
       {
         folderId: grantPermissionFolder.id,
-        userIds: selectedUserIds,
+        userId: grantSelectedUser.id,
+        role: grantSelectedRole,
       },
       {
         onSuccess: () => {
-
-          toast.success("Permissions granted successfully");
-          setGrantPermissionFolder(null);
-          setSelectedUserIds([]);
+          toast.success("Permission granted successfully");
+          resetGrantModal();
         },
         onError: () => {
         }
@@ -461,8 +471,9 @@ export default function Documents() {
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm font-semibold text-foreground">{perm.user.name}</span>
                       <span className="text-xs text-muted-foreground">{perm.user.email}</span>
-                      <div className="mt-2">
+                      <div className="mt-2 flex items-center gap-2">
                         <StatusPill status={perm.user.isActive ? "active" : "disabled"} />
+                        <RoleBadge role={perm.role} />
                       </div>
                       <span className="text-[10px] text-muted-foreground mt-1">
                         Granted by {perm.grantedBy} on {new Date(perm.grantedAt).toLocaleDateString()}
@@ -527,80 +538,96 @@ export default function Documents() {
       <Dialog
         open={!!grantPermissionFolder}
         onOpenChange={(open) => {
-          if (!open) {
-            setGrantPermissionFolder(null);
-            setSelectedUserIds([]);
-            setUserSearchQuery("");
-          }
+          if (!open) resetGrantModal();
         }}
       >
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Grant Permission</DialogTitle>
-            <DialogDescription>
-              Search for users to grant access to{" "}
-              <strong>{grantPermissionFolder?.name}</strong>.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={userSearchQuery}
-                onChange={(e) => setUserSearchQuery(e.target.value)}
-                placeholder="Search by name or email..."
-                className="pl-9"
-              />
-            </div>
-            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((u) => (
-                  <div
-                    key={u.id}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent transition cursor-pointer group"
-                    onClick={() => {
-                      setSelectedUserIds((prev) =>
-                        prev.includes(u.id)
-                          ? prev.filter((id) => id !== u.id)
-                          : [...prev, u.id],
-                      );
-                    }}
-                  >
-                    <UserAvatar name={u.name} email={u.email} />
-                    <Checkbox
-                      checked={selectedUserIds.includes(u.id)}
-                      onCheckedChange={() => {
-                        // Managed by the parent div click as well, but good for accessibility
-                      }}
-                    />
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-10 text-muted-foreground text-sm">
-                  {userSearchQuery ? "No users found" : "Type to search users"}
+          {grantStep === 1 ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Grant Permission</DialogTitle>
+                <DialogDescription>
+                  Select a user to grant access to{" "}
+                  <strong>{grantPermissionFolder?.name}</strong>.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    placeholder="Search by name or email..."
+                    className="pl-9"
+                    autoFocus
+                  />
                 </div>
-              )}
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              variant="outline"
-              onClick={() => setGrantPermissionFolder(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleGrantPermission}
-              disabled={
-                selectedUserIds.length === 0 || grantPermissionMutation.isPending
-              }
-            >
-              {grantPermissionMutation.isPending && (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              )}
-              Grant Access ({selectedUserIds.length})
-            </Button>
-          </div>
+                <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent transition cursor-pointer text-left"
+                        onClick={() => {
+                          setGrantSelectedUser({ id: u.id, name: u.name, email: u.email });
+                          setGrantSelectedRole(DEFAULT_ROLE);
+                          setGrantStep(2);
+                        }}
+                      >
+                        <UserAvatar name={u.name} email={u.email} />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                      </button>
+                    ))
+                  ) : (
+                    <div className="text-center py-10 text-muted-foreground text-sm">
+                      {userSearchQuery ? "No users found" : "Type to search users"}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                <Button variant="outline" onClick={resetGrantModal}>
+                  Cancel
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Choose Role</DialogTitle>
+                <DialogDescription>
+                  Set the access level for <strong>{grantPermissionFolder?.name}</strong>.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
+                  <UserAvatar name={grantSelectedUser?.name ?? ""} email={grantSelectedUser?.email} />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium">Role</span>
+                  <RoleSelect value={grantSelectedRole} onChange={setGrantSelectedRole} className="w-52" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 pt-4 border-t border-border">
+                <Button variant="ghost" onClick={() => setGrantStep(1)} disabled={grantPermissionMutation.isPending}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={resetGrantModal} disabled={grantPermissionMutation.isPending}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleGrantPermission} disabled={grantPermissionMutation.isPending}>
+                    {grantPermissionMutation.isPending && (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    )}
+                    Grant Permission
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

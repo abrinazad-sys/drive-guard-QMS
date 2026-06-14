@@ -2,7 +2,9 @@ import { useMemo, useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared";
 import { useAdminUsers } from "@/services/userService";
 import { useFolders } from "@/services/fileService";
-import { useGrantBulkPermissions, useRevokeBulkPermissions, useUserPermissions, useRevokePermission } from "@/services/permissionService";
+import { useGrantBulkPermissions, useRevokeBulkPermissions, useUserPermissions, useRevokePermission, useGrantPermission } from "@/services/permissionService";
+import { RoleBadge, RoleSelect } from "@/components/RoleControls";
+import { DEFAULT_ROLE, type DriveRole } from "@/lib/roles";
 import {
   Card,
   CardContent,
@@ -44,11 +46,17 @@ export default function Permissions() {
 
   const employees = useMemo(() => allUsers.filter((u) => u.role === "user"), [allUsers]);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
+  // folderId → chosen role for that folder
+  const [selectedFolderRoles, setSelectedFolderRoles] = useState<Record<string, DriveRole>>({});
+  const selectedFolders = useMemo(() => Object.keys(selectedFolderRoles), [selectedFolderRoles]);
   const [userSearch, setUserSearch] = useState("");
   const [folderSearch, setFolderSearch] = useState("");
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [grantConfirmOpen, setGrantConfirmOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("direct");
+  // Pending changes in the User Access tab (confirmed via modal before applying)
+  const [pendingRoleChange, setPendingRoleChange] = useState<{ folderId: string; folderName: string; currentRole: DriveRole; newRole: DriveRole } | null>(null);
+  const [pendingAccessRevoke, setPendingAccessRevoke] = useState<{ folderId: string; folderName: string } | null>(null);
   const [activeUserSearchId, setActiveUserSearchId] = useState<number | null>(null);
   const [userSearchQueryTab, setUserSearchQueryTab] = useState("");
 
@@ -73,15 +81,23 @@ export default function Permissions() {
 
   // Fetch selected user's permissions for Direct Access
   const { data: selectedUserPerms, isLoading: loadingUserPerms } = useUserPermissions(selectedUserId);
+  // folderId → existing role the user already has
+  const existingRoleByFolder = useMemo(() => {
+    const map: Record<string, DriveRole> = {};
+    for (const p of selectedUserPerms?.permissions ?? []) {
+      map[p.folderId] = p.role;
+    }
+    return map;
+  }, [selectedUserPerms]);
   const selectedUserExistingFolderIds = useMemo(
-    () => selectedUserPerms?.permissions.map((p) => p.folderId) ?? [],
-    [selectedUserPerms],
+    () => Object.keys(existingRoleByFolder),
+    [existingRoleByFolder],
   );
 
-  // Auto-select folders the user already has access to
+  // Auto-select folders the user already has access to, pre-filled with their current role
   useEffect(() => {
     if (selectedUserId && selectedUserPerms) {
-      setSelectedFolders(selectedUserExistingFolderIds);
+      setSelectedFolderRoles({ ...existingRoleByFolder });
     }
   }, [selectedUserId, selectedUserPerms]);
 
@@ -90,16 +106,22 @@ export default function Permissions() {
     [selectedUserId, allUsers],
   );
 
-  const foldersToGrant = selectedFolders.filter((id) => !selectedUserExistingFolderIds.includes(id));
-  const foldersToRevoke = selectedUserExistingFolderIds.filter((id) => !selectedFolders.includes(id));
+  // New grants OR role changes on already-permitted folders.
+  const foldersToGrant = selectedFolders.filter(
+    (id) => existingRoleByFolder[id] === undefined || existingRoleByFolder[id] !== selectedFolderRoles[id],
+  );
+  const foldersToRevoke = selectedUserExistingFolderIds.filter((id) => !(id in selectedFolderRoles));
 
   const grant = async () => {
     if (!selectedUserId || foldersToGrant.length === 0) return;
     try {
-      await bulkGrantMutation.mutateAsync({ userId: selectedUserId, folderIds: foldersToGrant });
-      toast.success(`Access granted to ${selectedUser?.name} for ${foldersToGrant.length} folder(s)`);
+      await bulkGrantMutation.mutateAsync({
+        userId: selectedUserId,
+        folders: foldersToGrant.map((folderId) => ({ folderId, role: selectedFolderRoles[folderId] })),
+      });
+      toast.success(`Access updated for ${selectedUser?.name} on ${foldersToGrant.length} folder(s)`);
       setSelectedUserId(null);
-      setSelectedFolders([]);
+      setSelectedFolderRoles({});
       setGrantConfirmOpen(false);
     } catch (error) {
       console.log("Error : ", error)
@@ -113,7 +135,7 @@ export default function Permissions() {
       toast.success(`Access revoked from ${selectedUser?.name} for ${foldersToRevoke.length} folder(s)`);
       setRevokeOpen(false);
       setSelectedUserId(null);
-      setSelectedFolders([]);
+      setSelectedFolderRoles({});
     } catch (error) {
       console.log("Error ", error)
     }
@@ -123,6 +145,7 @@ export default function Permissions() {
   const isRevoking = bulkRevokeMutation.isPending;
   
   const singleRevokeMutation = useRevokePermission();
+  const changeRoleMutation = useGrantPermission();
   const { data: userPermissionsData, isLoading: loadingUserPermissions, refetch: refetchUserPermissions } = useUserPermissions(activeUserSearchId);
 
   const filteredUsersForTab = useMemo(() => {
@@ -143,7 +166,7 @@ export default function Permissions() {
         description="Grant or revoke folder access for users and groups."
       />
 
-      <Tabs defaultValue="direct">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="direct">Direct Access</TabsTrigger>
           <TabsTrigger value="user-access">User Access</TabsTrigger>
@@ -258,17 +281,11 @@ export default function Permissions() {
                   </div>
                 ) : visibleFolders.length > 0 ? (
                   visibleFolders.map((f) => {
-                    const sel = selectedFolders.includes(f.id);
+                    const sel = f.id in selectedFolderRoles;
+                    const roleChanged = sel && existingRoleByFolder[f.id] !== undefined && existingRoleByFolder[f.id] !== selectedFolderRoles[f.id];
                     return (
-                      <button
+                      <div
                         key={f.id}
-                        onClick={() => {
-                          setSelectedFolders((prev) =>
-                            prev.includes(f.id)
-                              ? prev.filter((id) => id !== f.id)
-                              : [...prev, f.id]
-                          );
-                        }}
                         className={cn(
                           "w-full flex items-center gap-3 p-2.5 rounded-lg border transition",
                           sel
@@ -276,17 +293,42 @@ export default function Permissions() {
                             : "border-transparent hover:bg-muted",
                         )}
                       >
-                        <Checkbox checked={sel} />
-                        <FolderOpen className="h-4 w-4 text-primary shrink-0" />
-                        <div className="flex-1 text-left min-w-0">
-                          <div className="text-sm font-medium truncate">
-                            {f.name}
+                        <button
+                          type="button"
+                          className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                          onClick={() => {
+                            setSelectedFolderRoles((prev) => {
+                              const next = { ...prev };
+                              if (f.id in next) {
+                                delete next[f.id];
+                              } else {
+                                next[f.id] = existingRoleByFolder[f.id] ?? DEFAULT_ROLE;
+                              }
+                              return next;
+                            });
+                          }}
+                        >
+                          <Checkbox checked={sel} />
+                          <FolderOpen className="h-4 w-4 text-primary shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">
+                              {f.name}
+                              {roleChanged && <span className="ml-2 text-[10px] text-amber-600">(role changed)</span>}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {f.type}
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {f.type}
-                          </div>
-                        </div>
-                      </button>
+                        </button>
+                        {sel && (
+                          <RoleSelect
+                            value={selectedFolderRoles[f.id]}
+                            onChange={(role) =>
+                              setSelectedFolderRoles((prev) => ({ ...prev, [f.id]: role }))
+                            }
+                          />
+                        )}
+                      </div>
                     );
                   })
                 ) : (
@@ -417,34 +459,34 @@ export default function Permissions() {
                                     <div className="text-[10px] text-muted-foreground">Granted on {new Date(perm.grantedAt).toLocaleDateString()}</div>
                                   </div>
                                 </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                <RoleSelect
+                                  value={perm.role}
+                                  disabled={changeRoleMutation.isPending}
+                                  onChange={(role) => {
+                                    if (role === perm.role) return;
+                                    setPendingRoleChange({
+                                      folderId: perm.folderId,
+                                      folderName: perm.folderName || "Unknown Folder",
+                                      currentRole: perm.role,
+                                      newRole: role,
+                                    });
+                                  }}
+                                />
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                  disabled={singleRevokeMutation.isPending}
-                                  onClick={() => {
-                                    singleRevokeMutation.mutate(
-                                      { folderId: perm.folderId, userId: activeUserSearchId },
-                                      {
-                                        onSuccess: () => {
-                                          toast.success("Access removed successfully");
-                                          refetchUserPermissions();
-                                        },
-                                        onError: () => {
-                                          toast.error("Failed to remove access");
-                                        }
-                                      }
-                                    );
-                                  }}
+                                  onClick={() =>
+                                    setPendingAccessRevoke({
+                                      folderId: perm.folderId,
+                                      folderName: perm.folderName || "Unknown Folder",
+                                    })
+                                  }
                                 >
-                                  {singleRevokeMutation.isPending && 
-                                   singleRevokeMutation.variables?.folderId === perm.folderId && 
-                                   singleRevokeMutation.variables?.userId === activeUserSearchId ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
+                                </div>
                               </CardContent>
                             </Card>
                           );
@@ -499,6 +541,7 @@ export default function Permissions() {
         </TabsContent> */}
       </Tabs>
 
+      {activeTab === "direct" && (
       <div className="relative bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border p-3 z-40">
         <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4">
           <div className="text-sm text-muted-foreground">
@@ -533,6 +576,7 @@ export default function Permissions() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Grant confirmation modal */}
       <Dialog open={grantConfirmOpen} onOpenChange={setGrantConfirmOpen}>
@@ -540,7 +584,7 @@ export default function Permissions() {
           <DialogHeader>
             <DialogTitle>Grant Access</DialogTitle>
             <DialogDescription>
-              Grant <strong>{selectedUser?.name}</strong> access to {foldersToGrant.length} folder(s)?
+              Apply access for <strong>{selectedUser?.name}</strong> on {foldersToGrant.length} folder(s)?
             </DialogDescription>
           </DialogHeader>
           <div className="text-sm space-y-2 max-h-40 overflow-y-auto">
@@ -549,7 +593,8 @@ export default function Permissions() {
               return (
                 <div key={id} className="flex items-center gap-2 p-1.5 rounded bg-muted/50">
                   <FolderOpen className="h-4 w-4 text-primary shrink-0" />
-                  <span>{f?.name ?? id}</span>
+                  <span className="flex-1 truncate">{f?.name ?? id}</span>
+                  <RoleBadge role={selectedFolderRoles[id]} />
                 </div>
               );
             })}
@@ -603,6 +648,98 @@ export default function Permissions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* User Access: confirm role change */}
+      <Dialog open={!!pendingRoleChange} onOpenChange={(open) => { if (!open) setPendingRoleChange(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Role</DialogTitle>
+            <DialogDescription>
+              Update access on <strong>{pendingRoleChange?.folderName}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          {pendingRoleChange && (
+            <div className="flex items-center gap-3 text-sm">
+              <RoleBadge role={pendingRoleChange.currentRole} />
+              <span className="text-muted-foreground">→</span>
+              <RoleBadge role={pendingRoleChange.newRole} />
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingRoleChange(null)} disabled={changeRoleMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!pendingRoleChange || !activeUserSearchId) return;
+                changeRoleMutation.mutate(
+                  { folderId: pendingRoleChange.folderId, userId: activeUserSearchId, role: pendingRoleChange.newRole },
+                  {
+                    onSuccess: () => {
+                      toast.success("Role updated successfully");
+                      refetchUserPermissions();
+                      setPendingRoleChange(null);
+                    },
+                    onError: () => {
+                      toast.error("Failed to update role");
+                    },
+                  },
+                );
+              }}
+              disabled={changeRoleMutation.isPending}
+            >
+              {changeRoleMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Updating...</>
+              ) : (
+                "Confirm change"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Access: confirm revoke */}
+      <Dialog open={!!pendingAccessRevoke} onOpenChange={(open) => { if (!open) setPendingAccessRevoke(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revoke Access</DialogTitle>
+            <DialogDescription>
+              Remove access to <strong>{pendingAccessRevoke?.folderName}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingAccessRevoke(null)} disabled={singleRevokeMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!pendingAccessRevoke || !activeUserSearchId) return;
+                singleRevokeMutation.mutate(
+                  { folderId: pendingAccessRevoke.folderId, userId: activeUserSearchId },
+                  {
+                    onSuccess: () => {
+                      toast.success("Access removed successfully");
+                      refetchUserPermissions();
+                      setPendingAccessRevoke(null);
+                    },
+                    onError: () => {
+                      toast.error("Failed to remove access");
+                    },
+                  },
+                );
+              }}
+              disabled={singleRevokeMutation.isPending}
+            >
+              {singleRevokeMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Revoking...</>
+              ) : (
+                "Confirm revoke"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -637,5 +774,3 @@ function PanelCard({
     </Card>
   );
 }
-
-
