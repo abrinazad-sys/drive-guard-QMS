@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Send, Loader2, MoreVertical, Pencil, Trash2, X, MessageSquare, Check } from "lucide-react";
-import { fetchMentionableUsers, type ChatMention, type MentionableUser } from "@/services/chatService";
+import { Loader2, MoreVertical, Pencil, Trash2, X, MessageSquare, Check } from "lucide-react";
+import { type ChatMention } from "@/services/chatService";
 import { useFileChat, type LocalMessage } from "@/hooks/useFileChat";
+import { MentionInput, hydrateMentions } from "@/components/MentionInput";
 import { cn } from "@/lib/utils";
 
 interface CurrentUser {
@@ -59,30 +59,9 @@ export function FileChatPanel({
   const restoreScrollRef = useRef(false);
   const atBottomRef = useRef(true);
 
-  const [text, setText] = useState("");
-  const [pendingMentions, setPendingMentions] = useState<MentionableUser[]>([]);
-  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-  const [mentionResults, setMentionResults] = useState<MentionableUser[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editText, setEditText] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Reset composer when switching files.
-  useEffect(() => {
-    setText("");
-    setPendingMentions([]);
-    setMentionQuery(null);
-    setEditingId(null);
-  }, [file?.id]);
-
-  // Mention autocomplete search (debounced).
-  useEffect(() => {
-    if (mentionQuery == null) return;
-    const t = setTimeout(() => {
-      fetchMentionableUsers(mentionQuery).then(setMentionResults).catch(() => setMentionResults([]));
-    }, 180);
-    return () => clearTimeout(t);
-  }, [mentionQuery]);
+  useEffect(() => { setEditingId(null); }, [file?.id]);
 
   // Preserve scroll position when older messages are prepended; otherwise stick to bottom.
   useLayoutEffect(() => {
@@ -105,62 +84,6 @@ export function FileChatPanel({
       restoreScrollRef.current = true;
       chat.loadOlder();
     }
-  };
-
-  const handleInput = (value: string) => {
-    setText(value);
-    chat.setTyping(true);
-    const caret = textareaRef.current?.selectionStart ?? value.length;
-    const upto = value.slice(0, caret);
-    const match = /(^|\s)@(\S*)$/.exec(upto);
-    setMentionQuery(match ? match[2] : null);
-  };
-
-  const pickMention = (u: MentionableUser) => {
-    const el = textareaRef.current;
-    const caret = el?.selectionStart ?? text.length;
-    const upto = text.slice(0, caret);
-    const match = /(^|\s)@(\S*)$/.exec(upto);
-    if (!match) return;
-    const start = match.index + match[1].length; // position of '@'
-    const before = text.slice(0, start);
-    const after = text.slice(caret);
-    const next = `${before}@${u.email} ${after}`;
-    setText(next);
-    setPendingMentions((prev) => (prev.some((p) => p.id === u.id) ? prev : [...prev, u]));
-    setMentionQuery(null);
-    setTimeout(() => el?.focus(), 0);
-  };
-
-  const serialize = (raw: string): { content: string; mentions: ChatMention[] } => {
-    let content = raw.trim();
-    const mentions: ChatMention[] = [];
-    const sorted = [...pendingMentions].sort((a, b) => b.email.length - a.email.length);
-    for (const u of sorted) {
-      const needle = `@${u.email}`;
-      if (content.includes(needle)) {
-        content = content.split(needle).join(`@[${u.id}]`);
-        mentions.push({ id: u.id, name: u.name, email: u.email });
-      }
-    }
-    return { content, mentions };
-  };
-
-  const send = () => {
-    if (!text.trim()) return;
-    const { content, mentions } = serialize(text);
-    chat.sendMessage(content, mentions);
-    setText("");
-    setPendingMentions([]);
-    setMentionQuery(null);
-    atBottomRef.current = true;
-    chat.setTyping(false);
-  };
-
-  const saveEdit = (id: number) => {
-    const { content } = serialize(editText);
-    if (content.trim()) chat.editMessage(id, content);
-    setEditingId(null);
   };
 
   return (
@@ -213,10 +136,8 @@ export function FileChatPanel({
                 isOwn={m.author.id === currentUser.id}
                 seen={m.id > 0 && m.author.id === currentUser.id && chat.lastSeenByOthers >= m.id}
                 editing={editingId === m.id}
-                editText={editText}
-                setEditText={setEditText}
-                onStartEdit={() => { setEditingId(m.id); setEditText(m.content ?? ""); }}
-                onSaveEdit={() => saveEdit(m.id)}
+                onStartEdit={() => setEditingId(m.id)}
+                onSubmitEdit={(content) => { chat.editMessage(m.id, content); setEditingId(null); }}
                 onCancelEdit={() => setEditingId(null)}
                 onDelete={() => chat.deleteMessage(m.id)}
               />
@@ -232,47 +153,13 @@ export function FileChatPanel({
         )}
 
         {/* Composer */}
-        <div className="relative border-t border-border p-3">
-          {mentionQuery != null && mentionResults.length > 0 && (
-            <div className="absolute bottom-full left-3 right-3 mb-1 bg-popover border border-border rounded-lg shadow-lg max-h-52 overflow-y-auto z-10">
-              {mentionResults.map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => pickMention(u)}
-                  className="w-full flex items-center gap-2 p-2 hover:bg-accent text-left"
-                >
-                  <Avatar className="h-7 w-7">
-                    <AvatarImage src={u.profilePhotoUrl || undefined} alt={u.name} />
-                    <AvatarFallback className="bg-primary-soft text-primary text-[10px]">{initials(u.name)}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">{u.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">{u.email}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="flex items-end gap-2">
-            <Textarea
-              ref={textareaRef}
-              value={text}
-              onChange={(e) => handleInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && mentionQuery == null) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              placeholder="Message…  (use @ to mention)"
-              className="min-h-[44px] max-h-32 resize-none"
-              rows={1}
-            />
-            <Button size="icon" onClick={send} disabled={!text.trim()} className="shrink-0">
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
+        <div className="border-t border-border p-3">
+          <MentionInput
+            variant="composer"
+            placeholder="Message…  (use @ to mention)"
+            onTypingChange={chat.setTyping}
+            onSubmit={(content, mentions) => { atBottomRef.current = true; chat.sendMessage(content, mentions); }}
+          />
         </div>
       </SheetContent>
     </Sheet>
@@ -280,16 +167,14 @@ export function FileChatPanel({
 }
 
 function MessageRow({
-  m, isOwn, seen, editing, editText, setEditText, onStartEdit, onSaveEdit, onCancelEdit, onDelete,
+  m, isOwn, seen, editing, onStartEdit, onSubmitEdit, onCancelEdit, onDelete,
 }: {
   m: LocalMessage;
   isOwn: boolean;
   seen: boolean;
   editing: boolean;
-  editText: string;
-  setEditText: (v: string) => void;
   onStartEdit: () => void;
-  onSaveEdit: () => void;
+  onSubmitEdit: (content: string) => void;
   onCancelEdit: () => void;
   onDelete: () => void;
 }) {
@@ -322,12 +207,15 @@ function MessageRow({
         </div>
 
         {editing ? (
-          <div className="mt-1 space-y-1">
-            <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="min-h-[40px] text-sm" rows={2} />
-            <div className="flex gap-2">
-              <Button size="sm" className="h-7" onClick={onSaveEdit}>Save</Button>
-              <Button size="sm" variant="ghost" className="h-7" onClick={onCancelEdit}>Cancel</Button>
-            </div>
+          <div className="mt-1">
+            <MentionInput
+              variant="edit"
+              autoFocus
+              initialText={hydrateMentions(m.content ?? "", m.mentions)}
+              initialMentions={m.mentions.map((x) => ({ id: x.id, name: x.name, email: x.email }))}
+              onSubmit={(content) => onSubmitEdit(content)}
+              onCancel={onCancelEdit}
+            />
           </div>
         ) : m.deleted ? (
           <div className="text-sm text-muted-foreground italic mt-0.5">This message was deleted</div>
