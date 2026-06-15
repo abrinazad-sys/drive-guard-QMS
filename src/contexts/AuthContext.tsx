@@ -89,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem("qms_mode");
     sessionStorage.removeItem("qms_accent");
     setUser(null);
+    window.location.href = "/login";
   };
   const completeReset = () => {
     setMustReset(false);
