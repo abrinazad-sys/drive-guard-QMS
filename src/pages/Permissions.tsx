@@ -58,11 +58,15 @@ export default function Permissions() {
   const [folderSearch, setFolderSearch] = useState("");
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [grantConfirmOpen, setGrantConfirmOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("direct");
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "direct");
   // Pending changes in the User Access tab (confirmed via modal before applying)
   const [pendingRoleChange, setPendingRoleChange] = useState<{ folderId: string; folderName: string; currentRole: DriveRole; newRole: DriveRole } | null>(null);
   const [pendingAccessRevoke, setPendingAccessRevoke] = useState<{ folderId: string; folderName: string } | null>(null);
-  const [activeUserSearchId, setActiveUserSearchId] = useState<number | null>(null);
+  const [activeUserSearchId, setActiveUserSearchId] = useState<number | null>(() => {
+    if (searchParams.get("tab") !== "user-access") return null;
+    const id = searchParams.get("userId");
+    return id ? Number(id) : null;
+  });
   const [userSearchQueryTab, setUserSearchQueryTab] = useState("");
 
   const visibleUsers = useMemo(

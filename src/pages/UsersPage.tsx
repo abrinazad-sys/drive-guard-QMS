@@ -498,7 +498,7 @@ export default function Users() {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               disabled={u.role === "admin"}
-                              onClick={() => navigate(`/permissions?userId=${u.id}`)}
+                              onClick={() => navigate(`/permissions?userId=${u.id}&tab=user-access`)}
                             >
                               <FolderOpen className="h-4 w-4 mr-2" />
                               Folder Permissions
