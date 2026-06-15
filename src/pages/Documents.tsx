@@ -321,14 +321,14 @@ export default function Documents() {
                           <Button size="sm" variant="outline" onClick={() => handleDownload(f.id, f.name)} disabled={downloading === f.id}>
                             {downloading === f.id ? <Loader2 className="h-3 w-3 animate-spin" /> : downloaded === f.id ? <Check className="h-3 w-3 text-green-600" /> : <Download className="h-3 w-3" />}
                           </Button>
-                          <Button size="sm" variant="ghost" className="relative" onClick={() => setChatFile(f)}>
+                          {/* <Button size="sm" variant="ghost" className="relative" onClick={() => setChatFile(f)}>
                             <MessageSquare className="h-3 w-3" />
                             {unreadCounts[f.id] > 0 && (
                               <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold flex items-center justify-center">
                                 {unreadCounts[f.id] > 9 ? "9+" : unreadCounts[f.id]}
                               </span>
                             )}
-                          </Button>
+                          </Button> */}
                         </div>
                       </div>
                     </div>
