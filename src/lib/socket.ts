@@ -13,7 +13,7 @@ export function getSocket(): Socket {
       transports: ["websocket"],
       autoConnect: true,
       reconnection: true,
-      auth: (cb) => cb({ token: localStorage.getItem("token") ?? "" }),
+      auth: (cb) => cb({ token: sessionStorage.getItem("token") ?? "" }),
     });
   }
   return socket;

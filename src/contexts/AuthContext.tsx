@@ -38,11 +38,11 @@ const AuthContext = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => {
-    const stored = localStorage.getItem("USER");
+    const stored = sessionStorage.getItem("USER");
     return stored ? JSON.parse(stored) : null;
   });
   const [mustReset, setMustReset] = useState(() => {
-    const stored = localStorage.getItem("USER");
+    const stored = sessionStorage.getItem("USER");
     if (stored) {
       const u = JSON.parse(stored);
       return u.passwordChangeRequired === true;
@@ -52,10 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem("USER", JSON.stringify(user));
+      sessionStorage.setItem("USER", JSON.stringify(user));
     } else {
-      localStorage.removeItem("USER");
-      // localStorage.removeItem("token");
+      sessionStorage.removeItem("USER");
+      // sessionStorage.removeItem("token");
     }
   }, [user]);
 
@@ -64,9 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await loginApi(email, password);
       if (response.success && response.data) {
         const u = response.data.user;
-        localStorage.setItem("token", response.data.accessToken);
-        localStorage.setItem("qms_mode", u.themeMode || "system");
-        localStorage.setItem("qms_accent", u.themeAccent || "blue");
+        sessionStorage.setItem("token", response.data.accessToken);
+        sessionStorage.setItem("qms_mode", u.themeMode || "system");
+        sessionStorage.setItem("qms_accent", u.themeAccent || "blue");
         setUser(u);
         setMustReset(u.passwordChangeRequired);
         return {
@@ -83,11 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("USER");
-    localStorage.removeItem("passwordChangeRequired");
-    localStorage.removeItem("qms_mode");
-    localStorage.removeItem("qms_accent");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("USER");
+    sessionStorage.removeItem("passwordChangeRequired");
+    sessionStorage.removeItem("qms_mode");
+    sessionStorage.removeItem("qms_accent");
     setUser(null);
   };
   const completeReset = () => {

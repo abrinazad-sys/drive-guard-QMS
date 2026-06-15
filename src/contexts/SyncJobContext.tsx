@@ -23,7 +23,7 @@ function readPersistedState(): PersistedSyncJobState {
     }
 
     try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
+        const raw = window.sessionStorage.getItem(STORAGE_KEY);
         if (!raw) {
             return { jobId: null, status: "idle" };
         }
@@ -40,12 +40,12 @@ function readPersistedState(): PersistedSyncJobState {
 
 function persistState(state: PersistedSyncJobState) {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 function clearPersistedState() {
     if (typeof window === "undefined") return;
-    window.localStorage.removeItem(STORAGE_KEY);
+    window.sessionStorage.removeItem(STORAGE_KEY);
 }
 
 export function SyncJobProvider({ children }: { children: ReactNode }) {

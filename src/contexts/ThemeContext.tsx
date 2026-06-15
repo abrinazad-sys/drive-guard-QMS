@@ -27,8 +27,8 @@ export const ACCENTS: { value: Accent; label: string; hsl: string }[] = [
 ];
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>(() => (localStorage.getItem("qms_mode") as ThemeMode) || "system");
-  const [accent, setAccentState] = useState<Accent>(() => (localStorage.getItem("qms_accent") as Accent) || "blue");
+  const [mode, setModeState] = useState<ThemeMode>(() => (sessionStorage.getItem("qms_mode") as ThemeMode) || "system");
+  const [accent, setAccentState] = useState<Accent>(() => (sessionStorage.getItem("qms_accent") as Accent) || "blue");
   const [resolvedDark, setResolvedDark] = useState(false);
 
   useEffect(() => {
@@ -45,13 +45,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener("change", apply);
   }, [mode, accent]);
 
-  const setMode = (m: ThemeMode) => { setModeState(m); localStorage.setItem("qms_mode", m); };
-  const setAccent = (a: Accent) => { setAccentState(a); localStorage.setItem("qms_accent", a); };
+  const setMode = (m: ThemeMode) => { setModeState(m); sessionStorage.setItem("qms_mode", m); };
+  const setAccent = (a: Accent) => { setAccentState(a); sessionStorage.setItem("qms_accent", a); };
   const previewMode = (m: ThemeMode) => { setModeState(m); };
   const previewAccent = (a: Accent) => { setAccentState(a); };
   const clearPreview = useCallback(() => {
-    const savedMode = (localStorage.getItem("qms_mode") as ThemeMode) || "system";
-    const savedAccent = (localStorage.getItem("qms_accent") as Accent) || "blue";
+    const savedMode = (sessionStorage.getItem("qms_mode") as ThemeMode) || "system";
+    const savedAccent = (sessionStorage.getItem("qms_accent") as Accent) || "blue";
     setModeState(savedMode);
     setAccentState(savedAccent);
   }, []);
