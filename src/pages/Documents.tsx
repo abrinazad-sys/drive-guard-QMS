@@ -107,7 +107,10 @@ export default function Documents() {
   );
 
   const visibleFileIds = filteredFiles.map((f) => f.id);
-  const { data: unreadCounts = {}, refetch: refetchUnread } = useUnreadCounts(visibleFileIds);
+  const globalFileIds = globalResults
+    .filter((item) => item.type !== "folder")
+    .map((item) => item.id);
+  const { data: unreadCounts = {}, refetch: refetchUnread } = useUnreadCounts([...visibleFileIds, ...globalFileIds]);
   const chatCurrentUser = {
     id: Number(user?.id ?? 0),
     name: user?.name ?? "",
@@ -197,25 +200,39 @@ export default function Documents() {
                   <div className="text-center py-6 text-sm text-muted-foreground">No files found</div>
                 ) : (
                   globalResults.map((item: DriveItem) => (
-                    <button
+                    <div
                       key={item.id}
-                      onClick={() => {
-                        if (item.type === "folder") return;
-                        setSearch("");
-                        setShowSearchDropdown(false);
-                        logFileAccess(item.id, item.name, "preview");
-                        setPreviewFile(item as FileDto);
-                      }}
                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent text-left transition border-b border-border last:border-0"
                     >
-                      <FileIcon type={item.type === "folder" ? "folder" : (item as FileDto).extension} />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{item.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {item.type === "folder" ? "Folder" : `${(item as FileDto).size} · ${new Date(item.modifiedAt).toLocaleDateString()}`}
+                      <button
+                        onClick={() => {
+                          if (item.type === "folder") return;
+                          setSearch("");
+                          setShowSearchDropdown(false);
+                          logFileAccess(item.id, item.name, "preview");
+                          setPreviewFile(item as FileDto);
+                        }}
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                      >
+                        <FileIcon type={item.type === "folder" ? "folder" : (item as FileDto).extension} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{item.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {item.type === "folder" ? "Folder" : `${(item as FileDto).size} · ${new Date(item.modifiedAt).toLocaleDateString()}`}
+                          </div>
                         </div>
-                      </div>
-                    </button>
+                      </button>
+                      {/* {item.type !== "folder" && (
+                        <Button size="sm" variant="ghost" className="relative shrink-0" onClick={() => setChatFile(item as FileDto)}>
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          {unreadCounts[item.id] > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-1 rounded-full bg-primary text-primary-foreground text-[8px] font-semibold flex items-center justify-center">
+                              {unreadCounts[item.id] > 9 ? "9+" : unreadCounts[item.id]}
+                            </span>
+                          )}
+                        </Button>
+                      )} */}
+                    </div>
                   ))
                 )}
               </div>
