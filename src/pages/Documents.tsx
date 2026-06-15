@@ -4,7 +4,7 @@ import { PageHeader, StatusBadge, FileIcon, UserAvatar, StatusPill } from "@/com
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FolderOpen, Search, Download, Eye, MoreVertical, ChevronRight, Loader2, Check, ArrowLeft, Trash2, X, Cloud } from "lucide-react";
+import { FolderOpen, Search, Download, Eye, MoreVertical, ChevronRight, Loader2, Check, ArrowLeft, Trash2, X, Cloud, MessageSquare } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
@@ -20,6 +20,8 @@ import { useAdminUsers } from "@/services/userService";
 import { useGrantPermission, useFolderPermissions, useRevokePermission, useRevokeBulkPermissions, useUsersWithoutAccess, type PermissionSourceDto } from "@/services/permissionService";
 import { auditService } from "@/services/auditService";
 import { RoleBadge, RoleSelect } from "@/components/RoleControls";
+import { FileChatPanel } from "@/components/FileChatPanel";
+import { useUnreadCounts } from "@/services/chatService";
 import { DEFAULT_ROLE, roleLabel, type DriveRole } from "@/lib/roles";
 import type { FileDto, FolderDto } from "@/dto/FolderDto";
 import type { DriveItem } from "@/dto/FolderDto";
@@ -44,6 +46,7 @@ export default function Documents() {
   const [revokingUserId, setRevokingUserId] = useState<number | null>(null);
   const [pendingPanelRevoke, setPendingPanelRevoke] = useState<{ userId: number; userName: string } | null>(null);
   const [pendingInheritedRevoke, setPendingInheritedRevoke] = useState<{ userId: number; userName: string; targetName: string; sources: PermissionSourceDto[] } | null>(null);
+  const [chatFile, setChatFile] = useState<FileDto | null>(null);
 
   const resetGrantModal = () => {
     setGrantPermissionFolder(null);
@@ -102,6 +105,15 @@ export default function Documents() {
   const filteredFiles = filesToDisplay.filter(f =>
     f.name.toLowerCase().includes(search.toLowerCase()) && (filter === "all" || f.extension === filter)
   );
+
+  const visibleFileIds = filteredFiles.map((f) => f.id);
+  const { data: unreadCounts = {}, refetch: refetchUnread } = useUnreadCounts(visibleFileIds);
+  const chatCurrentUser = {
+    id: Number(user?.id ?? 0),
+    name: user?.name ?? "",
+    email: user?.email ?? "",
+    profilePhotoUrl: user?.profilePhotoUrl ?? null,
+  };
 
   // const filteredUsers = (grantPermissionFolder ? usersWithoutAccess : allUsers).filter(u =>
   //   u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
@@ -309,7 +321,14 @@ export default function Documents() {
                           <Button size="sm" variant="outline" onClick={() => handleDownload(f.id, f.name)} disabled={downloading === f.id}>
                             {downloading === f.id ? <Loader2 className="h-3 w-3 animate-spin" /> : downloaded === f.id ? <Check className="h-3 w-3 text-green-600" /> : <Download className="h-3 w-3" />}
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setDetailFile(f)}><MoreVertical className="h-3 w-3" /></Button>
+                          <Button size="sm" variant="ghost" className="relative" onClick={() => setChatFile(f)}>
+                            <MessageSquare className="h-3 w-3" />
+                            {unreadCounts[f.id] > 0 && (
+                              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold flex items-center justify-center">
+                                {unreadCounts[f.id] > 9 ? "9+" : unreadCounts[f.id]}
+                              </span>
+                            )}
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -750,6 +769,12 @@ export default function Documents() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <FileChatPanel
+        file={chatFile ? { id: chatFile.id, name: chatFile.name } : null}
+        currentUser={chatCurrentUser}
+        onClose={() => { setChatFile(null); refetchUnread(); }}
+      />
     </div>
   );
 }
