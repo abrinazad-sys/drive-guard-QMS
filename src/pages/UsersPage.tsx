@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -53,11 +54,15 @@ import {
   EyeOff,
   ChevronLeft,
   ChevronRight,
+  FolderOpen,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
@@ -150,6 +155,7 @@ export default function Users() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserDto | null>(null);
   const deleteUserMutation = useDeleteUser();
+  const navigate = useNavigate();
 
   // Create form
   const createForm = useForm<CreateUserFormData>({
@@ -487,14 +493,24 @@ export default function Users() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => setEditUser(u)}>
+                              <Pencil className="h-4 w-4 mr-2" />
                               Edit User
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={u.role === "admin"}
+                              onClick={() => navigate(`/permissions?userId=${u.id}`)}
+                            >
+                              <FolderOpen className="h-4 w-4 mr-2" />
+                              Folder Permissions
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => {
                                 setResetPasswordUser(u);
                                 setTempPassword("");
                               }}
                             >
+                              <KeyRound className="h-4 w-4 mr-2" />
                               Reset Password
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -514,6 +530,7 @@ export default function Users() {
                                 setDeleteOpen(true);
                               }}
                             >
+                              <Trash2 className="h-4 w-4 mr-2" />
                               Delete User
                             </DropdownMenuItem>
                           </DropdownMenuContent>

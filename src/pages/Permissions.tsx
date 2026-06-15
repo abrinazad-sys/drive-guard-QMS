@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/shared";
 import { useAdminUsers } from "@/services/userService";
 import { useFolders } from "@/services/fileService";
@@ -44,8 +45,12 @@ export default function Permissions() {
   const bulkGrantMutation = useGrantBulkPermissions();
   const bulkRevokeMutation = useRevokeBulkPermissions();
 
+  const [searchParams] = useSearchParams();
   const employees = useMemo(() => allUsers.filter((u) => u.role === "user"), [allUsers]);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(() => {
+    const userIdParam = searchParams.get("userId");
+    return userIdParam ? Number(userIdParam) : null;
+  });
   // folderId → chosen role for that folder
   const [selectedFolderRoles, setSelectedFolderRoles] = useState<Record<string, DriveRole>>({});
   const selectedFolders = useMemo(() => Object.keys(selectedFolderRoles), [selectedFolderRoles]);
