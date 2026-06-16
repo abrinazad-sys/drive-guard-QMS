@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme, type ThemeMode, type Accent } from "@/contexts/ThemeContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { notifications as allNotifs } from "@/lib/mock-data";
+import { useNotifications } from "@/hooks/useNotifications";
 import { ChangePasswordModal } from "@/pages/profile/forms/ChangePasswordModal";
 import { cn } from "@/lib/utils";
 
@@ -33,8 +33,7 @@ export default function AppLayout() {
     }
   }, []);
   const navigate = useNavigate();
-  const notifs = user?.role === "admin" ? allNotifs.admin : allNotifs.user;
-  const unread = notifs.filter((n) => !n.read).length;
+  const { unreadCount } = useNotifications();
 
   const initials =
     user?.name
@@ -91,7 +90,7 @@ export default function AppLayout() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {/* <Button
+                <Button
                   variant="ghost"
                   size="icon"
                   className="relative"
@@ -99,12 +98,12 @@ export default function AppLayout() {
                   aria-label="Notifications"
                 >
                   <Bell className="h-4 w-4" />
-                  {unread > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute top-1.5 right-1.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-semibold">
-                      {unread}
+                      {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                   )}
-                </Button> */}
+                </Button>
                 <DropdownMenu>
                   {/* <DropdownMenuTrigger asChild> */}
                   {/* <button className="flex items-center gap-2 ml-1 rounded-full hover:bg-accent p-1 pr-3 transition"> */}

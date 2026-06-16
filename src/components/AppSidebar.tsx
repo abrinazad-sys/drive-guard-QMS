@@ -37,7 +37,7 @@ const adminNav = [
   { title: "Permissions", url: "/permissions", icon: Shield },
   { title: "Audit Logs", url: "/audit", icon: ScrollText },
   // { title: "Sync Health", url: "/sync", icon: Activity },
-  // { title: "Notifications", url: "/notifications", icon: Bell },
+  { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Profile", url: "/profile", icon: User },
   // { title: "System Settings", url: "/settings", icon: Settings },
 ];
@@ -46,7 +46,7 @@ const employeeNav = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "My Documents", url: "/documents", icon: FolderOpen },
   { title: "My Activity", url: "/my-activity", icon: Activity },
-  // { title: "Notifications", url: "/notifications", icon: Bell },
+  { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Profile", url: "/profile", icon: User },
 ];
 

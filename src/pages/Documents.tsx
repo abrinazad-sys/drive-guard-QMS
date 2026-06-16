@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader, StatusBadge, FileIcon, UserAvatar, StatusPill } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,18 @@ export default function Documents() {
   const [pendingPanelRevoke, setPendingPanelRevoke] = useState<{ userId: number; userName: string } | null>(null);
   const [pendingInheritedRevoke, setPendingInheritedRevoke] = useState<{ userId: number; userName: string; targetName: string; sources: PermissionSourceDto[] } | null>(null);
   const [chatFile, setChatFile] = useState<FileDto | null>(null);
+  const [searchParams] = useSearchParams();
+
+  // Open chat from notification "See chat" link
+  useEffect(() => {
+    const fileId = searchParams.get("chatFileId");
+    const fileName = searchParams.get("chatFileName");
+    if (fileId) {
+      setChatFile({ id: fileId, name: fileName || fileId, mimeType: "", extension: "", parentId: null, size: "0", sizeBytes: 0, modifiedAt: new Date().toISOString(), type: "file", previewStrategy: "redirect", breadcrumb: [] } as unknown as FileDto);
+      // Clean up URL params
+      window.history.replaceState({}, "", "/documents");
+    }
+  }, [searchParams]);
 
   const resetGrantModal = () => {
     setGrantPermissionFolder(null);
