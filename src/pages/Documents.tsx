@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams } from "react-router-dom";
+import { getSocket } from "@/lib/socket";
 import { PageHeader, StatusBadge, FileIcon, UserAvatar, StatusPill } from "@/components/shared";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -124,6 +125,18 @@ export default function Documents() {
     .filter((item) => item.type !== "folder")
     .map((item) => item.id);
   const { data: unreadCounts = {}, refetch: refetchUnread } = useUnreadCounts([...visibleFileIds, ...globalFileIds]);
+
+  // Real-time unread count updates
+  useEffect(() => {
+    const socket = getSocket();
+    const handler = (payload: { fileId: string }) => {
+      // Debounce refetch to avoid spamming API calls
+      setTimeout(() => refetchUnread(), 500);
+    };
+    socket.on("chat:unread-inc", handler);
+    return () => { socket.off("chat:unread-inc", handler); };
+  }, [refetchUnread]);
+
   const chatCurrentUser = {
     id: Number(user?.id ?? 0),
     name: user?.name ?? "",

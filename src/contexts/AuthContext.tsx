@@ -4,8 +4,10 @@ import {
   useState,
   ReactNode,
   useEffect,
+  useRef,
 } from "react";
 import { loginApi } from "@/services/authService";
+import { getSocket } from "@/lib/socket";
 import createAxiosInstance from "@/config/axios-config";
 
 const axios = createAxiosInstance(import.meta.env.VITE_BASE_URL ?? "");
@@ -55,8 +57,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sessionStorage.setItem("USER", JSON.stringify(user));
     } else {
       sessionStorage.removeItem("USER");
-      // sessionStorage.removeItem("token");
     }
+  }, [user]);
+
+  // Listen for profile updates pushed from server (e.g. admin edits user name)
+  const socketInited = useRef(false);
+  useEffect(() => {
+    if (!user || socketInited.current) return;
+    socketInited.current = true;
+    const socket = getSocket();
+    const handler = (updated: AuthUser) => {
+      if (updated.id === user.id) {
+        setUser(updated);
+      }
+    };
+    socket.on("user:updated", handler);
+    return () => { socket.off("user:updated", handler); };
   }, [user]);
 
   const login = async (email: string, password: string) => {

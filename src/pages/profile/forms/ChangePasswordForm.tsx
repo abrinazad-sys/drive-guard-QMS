@@ -24,12 +24,11 @@ export function ChangePasswordForm({ onSuccess }: { onSuccess?: () => void }) {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const { user } = useAuth();
+  const { logout } = useAuth();
   const { mutateAsync: updatePassword, isPending: isUpdating } = useUpdatePassword();
   const { mutateAsync: changePassword, isPending: isChanging } = useChangePassword();
 
   const isPending = isUpdating || isChanging;
-  const forceChange = user?.passwordChangeRequired;
 
   const form = useForm<ChangePasswordDto>({
     mode: "onChange",
@@ -39,20 +38,14 @@ export function ChangePasswordForm({ onSuccess }: { onSuccess?: () => void }) {
 
   const onSubmit = async (data: ChangePasswordDto) => {
     try {
-      if (forceChange) {
-        await changePassword({
-          newPassword: data.newPassword,
-        });
-      } else {
-        await updatePassword({
-          currentPassword: data.oldPassword || "",
-          newPassword: data.newPassword,
-        });
-      }
+      await updatePassword({
+        currentPassword: data.oldPassword || "",
+        newPassword: data.newPassword,
+      });
 
-      toast.success("Password changed", { description: "Your password has been updated successfully." });
+      toast.success("Password changed", { description: "Logging out..." });
       form.reset();
-      onSuccess?.();
+      logout();
     } catch (error: any) {
       toast.error(getApiErrorMessage(error) || "Failed to update password");
     }
@@ -77,38 +70,36 @@ export function ChangePasswordForm({ onSuccess }: { onSuccess?: () => void }) {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-4">
-              { !forceChange && (
-                <FormField
-                  control={form.control}
-                  name="oldPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Current Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                            <Lock className="h-5 w-5" />
-                          </div>
-                          <Input
-                            type={showOldPassword ? "text" : "password"}
-                            placeholder="Current Password"
-                            className="pl-10 pr-10 h-10"
-                            {...field}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowOldPassword(!showOldPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          >
-                            {showOldPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                          </button>
+              <FormField
+                control={form.control}
+                name="oldPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Current Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          <Lock className="h-5 w-5" />
                         </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+                        <Input
+                          type={showOldPassword ? "text" : "password"}
+                          placeholder="Current Password"
+                          className="pl-10 pr-10 h-10"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowOldPassword(!showOldPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showOldPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}

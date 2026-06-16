@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { SyncJobProvider } from "@/contexts/SyncJobContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import AppLayout from "@/components/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Login from "@/pages/login/Login";
@@ -29,6 +30,7 @@ const App = () => (
       <AuthProvider>
         <TooltipProvider>
           <SyncJobProvider>
+            <NotificationProvider>
             <Toaster />
             <Sonner />
             <BrowserRouter>
@@ -60,6 +62,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
+          </NotificationProvider>
           </SyncJobProvider>
         </TooltipProvider>
       </AuthProvider>

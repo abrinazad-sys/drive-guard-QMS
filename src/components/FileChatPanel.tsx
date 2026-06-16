@@ -166,6 +166,19 @@ export function FileChatPanel({
   );
 }
 
+function formatChatDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const sameDay = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = d.getDate() === yesterday.getDate() && d.getMonth() === yesterday.getMonth() && d.getFullYear() === yesterday.getFullYear();
+  if (sameDay) return time;
+  if (isYesterday) return `Yesterday, ${time}`;
+  return `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${time}`;
+}
+
 function MessageRow({
   m, isOwn, seen, editing, onStartEdit, onSubmitEdit, onCancelEdit, onDelete,
 }: {
@@ -178,7 +191,7 @@ function MessageRow({
   onCancelEdit: () => void;
   onDelete: () => void;
 }) {
-  const time = new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const time = formatChatDate(m.createdAt);
   return (
     <div className="group flex gap-2.5">
       <Avatar className="h-8 w-8 shrink-0">

@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme, type ThemeMode, type Accent } from "@/contexts/ThemeContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotificationContext } from "@/contexts/NotificationContext";
 import { ChangePasswordModal } from "@/pages/profile/forms/ChangePasswordModal";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +33,7 @@ export default function AppLayout() {
     }
   }, []);
   const navigate = useNavigate();
-  const { unreadCount } = useNotifications();
+  const { unreadCount } = useNotificationContext();
 
   const initials =
     user?.name

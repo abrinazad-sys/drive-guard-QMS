@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotificationContext } from "@/contexts/NotificationContext";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/shared";
 import { Card } from "@/components/ui/card";
@@ -16,7 +16,7 @@ function formatTime(iso: string): string {
 
 export default function Notifications() {
   const { user } = useAuth();
-  const { notifications, unreadCount, hasMore, loading, loadMore, markRead, markAllRead } = useNotifications();
+  const { notifications, unreadCount, hasMore, loading, loadMore, markRead, markAllRead } = useNotificationContext();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
   const scrollRef = useRef<HTMLDivElement>(null);
