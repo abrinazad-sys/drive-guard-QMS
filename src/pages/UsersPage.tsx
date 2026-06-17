@@ -91,7 +91,7 @@ import {
 import { PasswordStrength } from "@/components/ui/password-strength";
 
 const createUserFormSchema = z.object({
-  name: z.string().min(1, "Name is required").max(100),
+  name: z.string().min(1, "Name is required").max(32),
   emailPrefix: z.string().min(1, "Email is required"),
   role: z.enum(["admin", "user"]),
   password: z

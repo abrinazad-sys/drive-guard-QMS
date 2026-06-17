@@ -5,7 +5,7 @@ export const contactSchema = z.object({
         .string()
         .nonempty("Please enter your full name")
         .min(3, "Full name must be at least 3 characters")
-        .max(100, "Full name can't be more than 100 characters")
+        .max(32, "Full name can't be more than 32 characters")
         .regex(/^[a-zA-Z\s]+$/, {
             message: "Full name can only contain letters and spaces",
         }),
